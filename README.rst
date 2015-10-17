@@ -84,7 +84,7 @@ AttrDict comes with two different objects, `Json` and `JsonList`.
 
 
 Json
-^^^^^^^^
+^^^^
 An Attr object that subclasses `dict`. You should be able to use this
 absolutely anywhere you can use a `dict`. While this is probably the class you
 want to use, there are a few caveats that follow from this being a `dict` under
