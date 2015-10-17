@@ -115,24 +115,25 @@ class StreamTestCase(unittest.TestCase):
 
     def test_flatMap_defaultIdentityFunction(self):
         l = slist(({1: 2, 3: 4}, {5: 6, 7: 8}))
-        self.assertEquals(l.flatMap().toSet(), {1, 3, 5, 7})
+        self.assertEquals(l.flatMap().toSet(), set((1, 3, 5, 7)))
 
     def test_sset_updateReturnsSelf(self):
-        s = sset({1, 2})
-        l = s.update({2, 3})
-        self.assertEquals(l, {1, 2, 3})
+        s = sset((1, 2))
+        l = s.update((2, 3))
+        self.assertEquals(l, set((1, 2, 3)))
 
     def test_sset_intersection_updateReturnsSelf(self):
-        self.assertEquals(sset({1, 2}).update({2, 3}), {1, 2, 3})
+        self.assertEquals(sset((1, 2)).update(set((2, 3))), set((1, 2, 3)))
 
     def test_reduceUsesInitProperly(self):
-        self.assertEquals(slist([sset({1, 2}), sset({3, 4})]).reduce(lambda x, y: x.update(y)), {1, 2, 3, 4})
-        self.assertEquals(slist([sset({1, 2}), sset({3, 4})]).reduce(lambda x, y: x.update(y), sset()), {1, 2, 3, 4})
+        self.assertEquals(slist([sset((1, 2)), sset((3, 4))]).reduce(lambda x, y: x.update(y)), set((1, 2, 3, 4)))
+        self.assertEquals(slist([sset((1, 2)), sset((3, 4))]).reduce(lambda x, y: x.update(y), sset()),
+                          set((1, 2, 3, 4)))
 
     def test_ssetChaining(self):
-        s = sset().add(0).clear().add(1).add(2).remove(2).discard(3).update({3, 4, 5}) \
-            .intersection_update({1, 3, 4}).difference_update({4, }).symmetric_difference_update({3, 4})
-        self.assertEquals(s, {1, 4})
+        s = sset().add(0).clear().add(1).add(2).remove(2).discard(3).update(set((3, 4, 5))) \
+            .intersection_update(set((1, 3, 4))).difference_update(set((4,))).symmetric_difference_update(set((3, 4)))
+        self.assertEquals(s, set((1, 4)))
 
     def test_maxes(self):
         self.assertEquals(stream(['a', 'abc', 'abcd', 'defg', 'cde']).maxes(lambda s: len(s)), ['abcd', 'defg'])
