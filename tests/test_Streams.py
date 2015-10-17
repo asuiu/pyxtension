@@ -1,6 +1,11 @@
 from itertools import ifilter
 import cStringIO
-import cPickle
+from operator import itemgetter
+
+try: # Python 3.x doesn't have cPickle module
+    import cPickle as pickle
+except ImportError:
+    import pickle
 import unittest
 import sys
 
@@ -40,10 +45,11 @@ class StreamTestCase(unittest.TestCase):
 
     def testStreamStr(self):
         self.assertEquals(str(self.s()), str([1, 2, 3]))
+
+    def testGroupBy(self):
         s = stream(iter((1, 2, 3, 4)))
-        l = s.groupBy(lambda k: k % 2)
-        r = str(l)
-        self.assertEquals(str([(0, [2, 4]), (1, [1, 3])]), r)
+        l = s.groupBy(lambda k: k % 2).sorted(key=itemgetter(0)).toList()
+        self.assertEquals([(0, [2, 4]), (1, [1, 3])], l)
 
     def testStreamToJson(self):
         from Json import Json
@@ -136,8 +142,8 @@ class StreamTestCase(unittest.TestCase):
     def test_defaultstreamdictSerialization(self):
         dd = defaultstreamdict(slist)
         dd[1].append(2)
-        s = cPickle.dumps(dd)
-        newDd = cPickle.loads(s)
+        s = pickle.dumps(dd)
+        newDd = pickle.loads(s)
         self.assertEquals(newDd, dd)
         self.assertIsInstance(newDd[1], slist)
 

@@ -3,7 +3,11 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 # Purpose: utility library
 
-import cPickle
+try:  # in Python 3.x the cPickle do not exist anymore
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 import struct
 import collections
 from itertools import ifilter, groupby, imap, izip
@@ -282,7 +286,7 @@ class __IStream(collections.Iterable):
         :return: Nothing
         '''
         for el in self:
-            s = cPickle.dumps(el, cPickle.HIGHEST_PROTOCOL)
+            s = pickle.dumps(el, pickle.HIGHEST_PROTOCOL)
             l = len(s)
             p = struct.pack("<L", l)
             assert len(p) == 4
@@ -300,7 +304,7 @@ class __IStream(collections.Iterable):
                 raise IOError("Wrong pickled file format")
             l = struct.unpack(format, s)[0]
             s = fs.read(l)
-            el = cPickle.loads(s)
+            el = pickle.loads(s)
             if statHandler is not None:
                 count += 1
                 sz += 4 + l
