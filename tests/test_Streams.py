@@ -103,9 +103,9 @@ class StreamTestCase(unittest.TestCase):
 
     def test_flatMap_basics(self):
         l = stream(({1: 2, 3: 4}, {5: 6, 7: 8}))
-        self.assertEquals(l.flatMap(dict.itervalues).toSet(), {2, 4, 6, 8})
-        self.assertEquals(l.flatMap(dict.iterkeys).toSet(), {1, 3, 5, 7})
-        self.assertEquals(l.flatMap(dict.iteritems).toSet(), {(1, 2), (5, 6), (3, 4), (7, 8)})
+        self.assertEquals(l.flatMap(dict.itervalues).toSet(), set((2, 4, 6, 8)))
+        self.assertEquals(l.flatMap(dict.iterkeys).toSet(), set((1, 3, 5, 7)))
+        self.assertEquals(l.flatMap(dict.iteritems).toSet(), set(((1, 2), (5, 6), (3, 4), (7, 8))))
 
     def test_flatMap_reiteration(self):
         l = stream(ItrFromFunc(lambda: (xrange(i) for i in xrange(5)))).flatMap()
