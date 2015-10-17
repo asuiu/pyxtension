@@ -10,11 +10,20 @@ except ImportError:
 
 import struct
 import collections
-from itertools import ifilter, groupby, imap, izip
+from itertools import groupby
+
+try:  # Python 3.x doesn't have ifilter, imap
+    from itertools import ifilter, imap, izip
+except ImportError:
+    ifilter = filter
+    imap = map
+    izip = zip
 import sys
 import math
 from collections import defaultdict
 
+if sys.version_info[0] >= 3:
+    xrange = range
 from fileutils import openByExtension
 
 __author__ = 'ASU'

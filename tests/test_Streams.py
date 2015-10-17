@@ -1,5 +1,8 @@
-from itertools import ifilter
-import cStringIO
+try:  # Python 3.x doesn't have ifilter
+    from itertools import ifilter
+except ImportError:
+    ifilter = filter
+from io import BytesIO
 from operator import itemgetter
 
 try: # Python 3.x doesn't have cPickle module
@@ -8,6 +11,9 @@ except ImportError:
     import pickle
 import unittest
 import sys
+
+if sys.version_info[0] >= 3:
+    xrange = range
 
 from streams import stream, slist, sset, sdict, ItrFromFunc, defaultstreamdict
 
@@ -87,10 +93,10 @@ class StreamTestCase(unittest.TestCase):
         self.assertEqual(sg.reduce(lambda x, y: x + y, 5), 11)
 
     def testStreamPickling(self):
-        sio = cStringIO.StringIO()
+        sio = BytesIO()
         expected = slist(slist((i,)) for i in xrange(10))
         expected.dumpToPickle(sio)
-        sio = cStringIO.StringIO(sio.getvalue())
+        sio = BytesIO(sio.getvalue())
 
         result = stream.loadFromPickled(sio)
         self.assertEquals(list(expected), list(result))

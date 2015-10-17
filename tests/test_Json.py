@@ -5,7 +5,6 @@ import unittest
 import sys
 
 from streams import slist, stream
-
 from Json import Json
 
 __author__ = 'ASU'
@@ -71,7 +70,7 @@ class JsonTestCase(unittest.TestCase):
 
     def test_OrigConvertSetToStr(self):
         j = Json()
-        j.st = {1, 2}
+        j.st = set((1, 2))
         j.toOrig()
 
 
