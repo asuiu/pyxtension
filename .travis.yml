@@ -13,6 +13,6 @@ python:
 before_script: pip install coveralls
 script:
   - "python -m unittest tests.test_Json tests.test_Streams"
-  - "coverage.exe run --branch --include=./*.py --omit=tests/* -m unittest tests.test_Json tests.test_Streams"
+  - "coverage run --branch --include=./*.py --omit=tests/* -m unittest tests.test_Json tests.test_Streams"
 after_success:
   - coveralls
