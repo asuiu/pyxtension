@@ -3,6 +3,9 @@ pyxtension
 ========
 .. image:: https://travis-ci.org/asuiu/pyxtension.svg?branch=master
   :target: https://travis-ci.org/asuiu/pyxtension
+.. image:: https://coveralls.io/repos/asuiu/pyxtension/badge.svg?branch=master&service=github
+  :target: https://coveralls.io/github/asuiu/pyxtension?branch=master
+
 
 pyxtension is a pure Python GNU-licensed library that includes Scala-like streams, Json with attribute access syntax, and other common use stuff.
 
