@@ -58,7 +58,7 @@ class StreamTestCase(unittest.TestCase):
         self.assertEquals([(0, [2, 4]), (1, [1, 3])], l)
 
     def testStreamToJson(self):
-        from pyxtension.Json import Json
+        from Json import Json
 
         j = stream((("a", 2), (3, 4))).toJson()
         self.assertIsInstance(j, Json)
