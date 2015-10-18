@@ -58,7 +58,7 @@ class StreamTestCase(unittest.TestCase):
         self.assertEquals([(0, [2, 4]), (1, [1, 3])], l)
 
     def testStreamToJson(self):
-        from Json import Json
+        from pyxtension.Json import Json
 
         j = stream((("a", 2), (3, 4))).toJson()
         self.assertIsInstance(j, Json)
@@ -77,7 +77,7 @@ class StreamTestCase(unittest.TestCase):
 
     def test_sdict(self):
         s = lambda: sdict({1: 2, 3: 4})
-        self.assertListEqual(s().map(lambda t: t).toList(), [(1, 2), (3, 4)])
+        self.assertListEqual(s().map(lambda t: t).toList(), [1, 3])
 
     def testStreamsFromGenerator(self):
         sg = stream(ItrFromFunc(lambda: (i for i in range(4))))

@@ -253,7 +253,7 @@ class Json(sdict):
         return json.dump(self.toOrig(), *args, **kwargs)
 
     def dumps(self, *args, **kwargs):
-        """Serialize ``obj`` to a JSON formatted ``str``.
+        """Serialize ``self`` to a JSON formatted ``str``.
 
         If ``skipkeys`` is false then ``dict`` keys that are not basic types
         (``str``, ``unicode``, ``int``, ``long``, ``float``, ``bool``, ``None``)
@@ -295,7 +295,6 @@ class Json(sdict):
         the ``cls`` kwarg; otherwise ``JSONEncoder`` is used.
 
         """
-
         return json.dumps(self.toOrig(), *args, **kwargs)
 
     def toString(self):

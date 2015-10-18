@@ -444,7 +444,7 @@ class sdict(dict, __IStream):
         dict.__init__(self, *args, **kwrds)
 
     def __iter__(self):
-        return dict.iteritems(self)
+        return dict.__iter__(self)
 
     def iteritems(self):
         return stream(dict.iteritems(self))
