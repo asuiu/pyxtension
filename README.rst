@@ -1,6 +1,6 @@
-========
+==========
 pyxtension
-========
+==========
 .. image:: https://travis-ci.org/asuiu/pyxtension.svg?branch=master
   :target: https://travis-ci.org/asuiu/pyxtension
 .. image:: https://coveralls.io/repos/asuiu/pyxtension/badge.svg?branch=master&service=github
@@ -13,6 +13,29 @@ pyxtension is a pure Python GNU-licensed library that includes Scala-like stream
 Json
 ========
 
+**Never again will you have to write code like this**::
+
+		body = {
+			'query': {
+				'filtered': {
+					'query': {
+						'match': {'description': 'addictive'}
+					},
+					'filter': {
+						'term': {'created_by': 'Mats'}
+					}
+				}
+			}
+		}
+
+
+From now on, you may simply write the following three lines::
+
+		body = Dict()
+		body.query.filtered.query.match.description = 'addictive'
+		body.query.filtered.filter.term.created_by = 'Mats'
+		
+		
 Json is a module that provides mapping objects that allow their elements to be accessed both as keys and as attributes::
 
     > from Json import Json
@@ -36,8 +59,10 @@ Installation
 from Github::
 
     $ git clone https://github.com/asuiu/pyxtension.git
+
 or
-	$ git submodule add https://github.com/asuiu/pyxtension.git
+
+    $ git submodule add https://github.com/asuiu/pyxtension.git
 
 Basic Usage
 ===========
@@ -104,3 +129,5 @@ Assignment as keys will still work::
 License
 =======
 pyxtension is released under a GNU Public license.
+The idea for Json module was inspired from `addict <https://github.com/mewwts/addict>`_ and `AttrDict <https://github.com/bcj/AttrDict>`_ , 
+but this is a completely new and improved code.
