@@ -129,11 +129,11 @@ class Json(sdict):
         if not kwargs and len(args) == 1 and isinstance(args[0], basestring):
             d = json.loads(args[0])
             assert isinstance(d, dict)
-            supermethod(self).__init__(d)
+            super(Json, self).__init__(d)
         elif len(args) >= 2 and isinstance(args[0], tuple):
-            supermethod(self).__init__(args)
+            super(Json, self).__init__(args)
         else:
-            supermethod(self).__init__(*args, **kwargs)
+            super(Json, self).__init__(*args, **kwargs)
 
     def __getitem__(self, name):
         """
@@ -177,7 +177,7 @@ class Json(sdict):
             raise AttributeError("'%s' object attribute '%s' is read-only" % (str(self.__class__), key))
 
     def __iter__(self):
-        return iter(self.iteritems())
+        return super(Json, self).__iter__()
 
     def iteritems(self):
         return stream(dict.iteritems(self)).map(lambda kv: (kv[0], Json._toJ(kv[1])))

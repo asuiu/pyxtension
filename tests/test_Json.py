@@ -4,7 +4,7 @@ import types
 import unittest
 import sys
 
-from streams import slist, stream
+from streams import slist, stream, sdict
 from Json import Json
 
 __author__ = 'ASU'
@@ -49,7 +49,7 @@ class JsonTestCase(unittest.TestCase):
 
     def testIteritems(self):
         b = self.d.iteritems().toList()
-        self.assertEqual(self.d.iteritems().toList(), self.d.toList())
+        self.assertEqual(self.d.iterkeys().toList(), self.d.toList())
         self.assertEqual(b[2][1].d2, 4)
         self.assertIsInstance(b[2][1], Json)
         self.assertIsInstance(self.d.iteritems(), stream)
@@ -68,10 +68,27 @@ class JsonTestCase(unittest.TestCase):
         self.d.c = "set"
         self.assertEqual(self.d.c, "set")
 
-    def test_OrigConvertSetToStr(self):
+    def test_toOrigNominal(self):
+        j = Json()
+        j.a = Json({'b': 'c'})
+        j.toString()
+        j.toOrig()
+        repr(j)
+        d = j.toOrig()
+
+        self.assertIsInstance(d, sdict)
+        self.assertDictEqual(d, {'a': {'b': 'c'}})
+
+    def test_NoneValueRemainsNone(self):
+        j = Json({'a': None})
+        self.assertIs(j.a, None)
+
+    def test_ConvertSetToList(self):
         j = Json()
         j.st = set((1, 2))
-        j.toOrig()
+        d = j.toOrig()
+        self.assertIsInstance(d, sdict)
+        self.assertDictEqual({'st': set([1, 2])}, d)
 
     def testSerializeDeserialize(self):
         serialized = '{"command": "put", "details": {"platform": "fb", "cookie": "cookie1"}}'
@@ -259,7 +276,7 @@ class TestsFromAddict(unittest.TestCase):
 
         old.update(new)
 
-        reference = {'foo':   {'now_my_papa_is_a_dict': True},
+        reference = {'foo': {'now_my_papa_is_a_dict': True},
                      'child': {'c': 'new c', 'b': 'new b'}}
 
         self.assertDictEqual(old, reference)
