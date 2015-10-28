@@ -95,6 +95,10 @@ class JsonTestCase(unittest.TestCase):
         j = Json(serialized)
         self.assertEqual(serialized, j.dumps())
 
+    def test_serializeDeserialize(self):
+        serialized = '{"command": "put", "details": {"platform": "fb", "cookie": "cookie1"}}'
+        j = Json(serialized)
+        self.assertEqual(serialized, j.dumps())
 
 TEST_VAL = [1, 2, 3]
 TEST_DICT = {'a': {'b': {'c': TEST_VAL}}}

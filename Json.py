@@ -129,11 +129,11 @@ class Json(sdict):
         if not kwargs and len(args) == 1 and isinstance(args[0], basestring):
             d = json.loads(args[0])
             assert isinstance(d, dict)
-            super(Json, self).__init__(d)
+            sdict.__init__(self, d)
         elif len(args) >= 2 and isinstance(args[0], tuple):
-            super(Json, self).__init__(args)
+            sdict.__init__(self, args)
         else:
-            super(Json, self).__init__(*args, **kwargs)
+            sdict.__init__(self, *args, **kwargs)
 
     def __getitem__(self, name):
         """
@@ -144,27 +144,24 @@ class Json(sdict):
         """
 
         if name in self:
-            d = supermethod(self).__getitem__(name)
+            d = sdict.__getitem__(self, name)
             if isinstance(d, dict) and not isinstance(d, Json):
                 j = Json(d)
-                supermethod(self).__setitem__(name, j)
-                # dict.__setitem__(self, name, j)
+                sdict.__setitem__(self, name, j)
                 return j
             elif isinstance(d, list) and not isinstance(d, JsonList):
-                j = JsonList(d)
-                supermethod(self).__setitem__(name, j)
-                # dict.__setitem__(self, name, j)
+                j = JsonList(d)                
+                sdict.__setitem__(self, name, j)
                 return j
             elif isinstance(d, set) and not isinstance(d, sset):
-                j = sset(d)
-                supermethod(self).__setitem__(name, j)
-                # dict.__setitem__(self, name, j)
+                j = sset(d)                
+                sdict.__setitem__(self, name, j)
                 return j
             else:
                 return d
         else:
             j = Json()
-            supermethod(self).__setitem__(name, j)
+            sdict.__setitem__(self, name, j)
             return j
 
     def __getattr__(self, item):
