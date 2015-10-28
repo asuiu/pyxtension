@@ -2,13 +2,14 @@
 # coding:utf-8
 # Author: ASU --<andrei.suiu@gmail.com>
 # Purpose: utility library
-
 try:  # in Python 3.x the cPickle do not exist anymore
     import cPickle as pickle
 except ImportError:
     import pickle
 
+from Queue import Queue
 import struct
+import threading
 import collections
 from itertools import groupby
 
@@ -56,16 +57,96 @@ class ItrFromFunc:
         return iter(self._f())
 
 
-class __IStream(collections.Iterable):
+class EndQueue:
+    pass
+
+
+class MapException:
+    def __init__(self, exc_info):
+        self.exc_info = exc_info
+
+
+class _IStream(collections.Iterable):
+
+
     def map(self, f):
         '''
 
         :param f:
-        :type f: lambda
+        :type f: (T) -> V
         :return:
         :rtype: stream
         '''
         return stream(ItrFromFunc(lambda: imap(f, self)))
+
+    @staticmethod
+    def __map_thread(f, qin, qout):
+        while True:
+            el = qin.get()
+            if isinstance(el, EndQueue):
+                qin.put(el)
+                return
+            try:
+                newEl = f(el)
+                qout.put(newEl)
+            except:
+                qout.put(MapException(sys.exc_info()))
+
+    @staticmethod
+    def __fastmap_generator(itr, qin, qout, threadPool):
+        while 1:
+            try:
+                el = next(itr)
+            except StopIteration:
+                qin.put(EndQueue())
+                for t in threadPool:
+                    t.join()
+                while not qout.empty():
+                    newEl = qout.get()
+                    if isinstance(newEl, MapException):
+                        raise newEl.exc_info[0], newEl.exc_info[1], newEl.exc_info[2]
+                    yield newEl
+                break
+            else:
+                qin.put(el)
+                newEl = qout.get()
+                if isinstance(newEl, MapException):
+                    raise newEl.exc_info[0], newEl.exc_info[1], newEl.exc_info[2]
+                yield newEl
+
+    def fastmap(self, f, poolSize=16):
+        """
+        Parallel unordered map using multithreaded pool.
+        It spawns at most poolSize threads and applies the f function.
+        The elements in the result stream appears in the unpredicted order.
+        It's most usefull for I/O or CPU intensive consuming functions.
+        :param f:
+        :type f: (T) -> V
+        :param poolSize: number of threads to spawn
+        :type poolSize: int
+        :return:
+        :rtype: stream
+        """
+        assert poolSize > 0
+        assert poolSize < 2 ** 12
+        Q_SZ = poolSize * 4
+        qin = Queue(Q_SZ)
+        qout = Queue(Q_SZ)
+        threadPool = [threading.Thread(target=_IStream.__map_thread, args=(f, qin, qout)) for i in xrange(poolSize)]
+        for t in threadPool:
+            t.start()
+        i = 0
+        itr = iter(self)
+        hasNext = True
+        while i < Q_SZ and hasNext:
+            try:
+                el = next(itr)
+                i += 1
+                qin.put(el)
+            except StopIteration:
+                hasNext = False
+        return stream(_IStream.__fastmap_generator(itr, qin, qout, threadPool))
+
 
     def enumerate(self):
         return stream(izip(xrange(0, sys.maxint), self))
@@ -76,21 +157,23 @@ class __IStream(collections.Iterable):
             for j in f(i):
                 yield j
 
-    def flatMap(self, f=None):
+    def flatMap(self, predicate=lambda x: x):
         """
-        :param f: f is a function that will receive elements of self collection and return an iterable
-            By default f is an identity function
-        :type f: (self.elementsType)-> collections.Iterable[T]
-        :return: will return stream of objects of the same type of elements from the stream returned by f()
+        :param predicate: predicate is a function that will receive elements of self collection and return an iterable
+            By default predicate is an identity function
+        :type predicate: (self.elementsType)-> collections.Iterable[T]
+        :return: will return stream of objects of the same type of elements from the stream returned by predicate()
         :rtype:
         """
-        if f is None:
-            f = lambda x: x
-        return stream(ItrFromFunc(lambda: self.__class__.__flatMapGenerator(self, f)))
+        return stream(ItrFromFunc(lambda: self.__class__.__flatMapGenerator(self, predicate)))
 
-    def filter(self, f):
-        return stream(ItrFromFunc(lambda: ifilter(f, self)))
-        # return stream(lambda: ifilter(f, self), functionalItr=True)
+    def filter(self, predicate=None):
+        """
+        :param predicate: If predicate is None, return the items that are true.
+        :type predicate: None|(T) -> bool
+        :rtype: stream
+        """
+        return stream(ItrFromFunc(lambda: ifilter(predicate, self)))
 
     def exists(self, f):
         """
@@ -288,6 +371,7 @@ class __IStream(collections.Iterable):
     def zip(self):
         return stream(izip(*(self.toList())))
 
+
     def dumpToPickle(self, fileStream):
         '''
         :param fileStream: should be binary output stream
@@ -301,38 +385,8 @@ class __IStream(collections.Iterable):
             assert len(p) == 4
             fileStream.write(p + s)
 
-    @classmethod
-    def __unpickleStreamGenerator(cls, fs, format="<L", statHandler=None):
-        count = 0
-        sz = 0
-        while True:
-            s = fs.read(4)
-            if s == '':
-                return
-            elif len(s) != 4:
-                raise IOError("Wrong pickled file format")
-            l = struct.unpack(format, s)[0]
-            s = fs.read(l)
-            el = pickle.loads(s)
-            if statHandler is not None:
-                count += 1
-                sz += 4 + l
-                statHandler((count, sz))
-            yield el
 
-    @classmethod
-    def loadFromPickled(cls, file, format="<L", statHandler=None):
-        '''
-        :param file: should be path or binary file stream
-        :type file: file | str
-        :rtype: stream
-        '''
-        if isinstance(file, basestring):
-            file = openByExtension(file, mode='r', buffering=2 ** 12)
-        return cls(stream.__unpickleStreamGenerator(file, format, statHandler))
-
-
-class stream(__IStream):
+class stream(_IStream):
     def __init__(self, itr=None):
         if itr is None:
             self._itr = []
@@ -352,10 +406,53 @@ class stream(__IStream):
         if isinstance(self._itr, list):
             return str(self._itr)
         else:
-            return str(list(self._itr))
+            return object.__str__(self)
+
+    @staticmethod
+    def __unpickleStreamGenerator(fs, format="<L", statHandler=None):
+        """
+
+        :param fs:
+        :type fs: file
+        :param format:
+        :type format: str
+        :param statHandler: statistics handler, will be called before every yield with a tuple (n,size)
+        :type statHandler: callable
+        :return: unpickled element
+        :rtype: T
+        """
+        count = 0
+        sz = 0
+        while True:
+            s = fs.read(4)
+            if s == '':
+                return
+            elif len(s) != 4:
+                raise IOError("Wrong pickled file format")
+            l = struct.unpack(format, s)[0]
+            s = fs.read(l)
+            el = pickle.loads(s)
+            if statHandler is not None:
+                count += 1
+                sz += 4 + l
+                statHandler((count, sz))
+            yield el
+
+    @staticmethod
+    def loadFromPickled(file, format="<L", statHandler=None):
+        '''
+        :param file: should be path or binary file stream
+        :param statHandler: statistics handler, will be called before every yield with a tuple (n,size)
+        :type statHandler: callable
+        :type file: file | str
+        :rtype: stream[T]
+        '''
+        if isinstance(file, basestring):
+            file = openByExtension(file, mode='r', buffering=2 ** 12)
+        return stream(stream.__unpickleStreamGenerator(file, format, statHandler))
 
 
-class sset(set, __IStream):
+class sset(set, _IStream):
     def __init__(self, *args, **kwrds):
         set.__init__(self, *args, **kwrds)
 
@@ -396,7 +493,7 @@ class sset(set, __IStream):
         return self
 
 
-class slist(list, __IStream):
+class slist(list, _IStream):
     def __init__(self, *args, **kwrds):
         list.__init__(self, *args, **kwrds)
 
@@ -439,7 +536,7 @@ class slist(list, __IStream):
         return self
 
 
-class sdict(dict, __IStream):
+class sdict(dict, _IStream):
     def __init__(self, *args, **kwrds):
         dict.__init__(self, *args, **kwrds)
 

@@ -11,6 +11,7 @@ except ImportError:
     import pickle
 import unittest
 import sys
+import time
 
 if sys.version_info[0] >= 3:
     xrange = range
@@ -50,12 +51,10 @@ class StreamTestCase(unittest.TestCase):
         self.assertEqual(s.exists(lambda e: e == 2), False)
 
     def testStreamStr(self):
-        self.assertEquals(str(self.s()), str([1, 2, 3]))
-
-    def testGroupBy(self):
         s = stream(iter((1, 2, 3, 4)))
-        l = s.groupBy(lambda k: k % 2).sorted(key=itemgetter(0)).toList()
-        self.assertEquals([(0, [2, 4]), (1, [1, 3])], l)
+        str(s)
+        repr(s)
+        self.assertListEqual(s.toList(), [1, 2, 3, 4])
 
     def testStreamToJson(self):
         from Json import Json
@@ -76,8 +75,8 @@ class StreamTestCase(unittest.TestCase):
         self.assertEqual(len(s()), 3)
 
     def test_sdict(self):
-        s = lambda: sdict({1: 2, 3: 4})
-        self.assertListEqual(s().map(lambda t: t).toList(), [1, 3])
+        d = sdict({1: 2, 3: 4})
+        self.assertListEqual(d.iteritems().map(lambda t: t).toList(), [(1, 2), (3, 4)])
 
     def testStreamsFromGenerator(self):
         sg = stream(ItrFromFunc(lambda: (i for i in range(4))))
@@ -171,6 +170,54 @@ class StreamTestCase(unittest.TestCase):
         self.assertEquals(s1.toList(), [1, 2, 3, 4])
         self.assertEquals(s1.toList(), [1, 2, 3, 4])  # second time to exclude one time iterator bug
         self.assertEquals(s1.toList(), [1, 2, 3, 4])
+
+    def test_stream_getitem(self):
+        s = stream(i for i in xrange(1))
+        self.assertEqual(s[0], 0)
+
+    def test_fastmap_time(self):
+        def sleepFunc(el):
+            time.sleep(0.3)
+            return el * el
+
+        s = stream(xrange(100))
+        t1 = time.time()
+        res = s.fastmap(sleepFunc, poolSize=50).toSet()
+        dt = time.time() - t1
+        expected = set(i * i for i in xrange(100))
+        self.assertSetEqual(res, expected)
+        self.assertLessEqual(dt, 1.5)
+
+    def test_fastmap_nominal(self):
+        s = stream(xrange(100))
+        res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
+        expected = set(i * i for i in xrange(100))
+        self.assertSetEqual(res, expected)
+
+    def test_fastmap_one_el(self):
+        s = stream([1, ])
+        res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
+        expected = set((1,))
+        self.assertSetEqual(res, expected)
+
+    def test_fastmap_no_el(self):
+        s = stream([])
+        res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
+        expected = set()
+        self.assertSetEqual(res, expected)
+
+    def test_fastmap_None_el(self):
+        s = stream([None])
+        res = s.fastmap(lambda x: x, poolSize=4).toSet()
+        expected = set([None])
+        self.assertSetEqual(res, expected)
+
+    def test_fastmap_raises_exception(self):
+        s = stream([None])
+        with self.assertRaises(TypeError):
+            res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
+
+
 
 
 """
