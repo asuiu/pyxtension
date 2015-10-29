@@ -234,6 +234,20 @@ class StreamTestCase(unittest.TestCase):
         self.assertListEqual(u.toList(), [0, 1, 2, 3])
         self.assertListEqual(u.toList(), [0, 1, 2, 3])
 
+    def test_pstddev_nominal(self):
+        s = stream([1, 2, 3, 4])
+        self.assertAlmostEqual(s.pstddev(), 1.118033988749895)
+
+    def test_pstddev_exception(self):
+        with self.assertRaises(ValueError):
+            stream([1]).pstddev()
+
+    def test_mean(self):
+        self.assertAlmostEqual(stream([1, 2, 3, 4]).mean(), 2.5)
+
+    def test_mean_exception(self):
+        with self.assertRaises(ValueError):
+            stream([]).mean()
 
 """
 Allow for these test cases to be run from the command line

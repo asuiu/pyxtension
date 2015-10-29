@@ -377,6 +377,31 @@ class _IStream(collections.Iterable):
         s = self.sum()
         return self.map(lambda x: (float(x) / s) * math.log(s / float(x), 2)).sum()
 
+    def pstddev(self):
+        """Calculates the population standard deviation."""
+        sm = 0
+        n = 0
+        for el in self:
+            sm += el
+            n += 1
+        if n < 2:
+            raise ValueError('Standard deviation requires at least two data points')
+        mean = float(sm) / n
+        ss = sum((x - mean) ** 2 for x in self)
+        pvar = ss / n  # the population variance
+        return pvar ** 0.5
+
+    def mean(self):
+        """Return the sample arithmetic mean of data. in one single pass"""
+        sm = 0
+        n = 0
+        for el in self:
+            sm += el
+            n += 1
+        if n < 1:
+            raise ValueError('Mean requires at least one data point')
+        return sm / float(n)
+
     def zip(self):
         return stream(izip(*(self.toList())))
 
