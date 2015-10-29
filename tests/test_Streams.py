@@ -3,7 +3,6 @@ try:  # Python 3.x doesn't have ifilter
 except ImportError:
     ifilter = filter
 from io import BytesIO
-from operator import itemgetter
 
 try: # Python 3.x doesn't have cPickle module
     import cPickle as pickle
@@ -217,7 +216,23 @@ class StreamTestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
 
+    def test_unique_nominal(self):
+        s = stream([1,2,3,1,2])
+        self.assertListEqual(s.unique().toList(), [1,2,3])
 
+    def test_unique_mapping(self):
+        s = stream(['abc', 'def', 'a', 'b', 'ab'])
+        self.assertListEqual(s.unique(len).toList(), ['abc', 'a', 'ab'])
+
+    def test_unique_empty_stream(self):
+        s = stream([])
+        self.assertListEqual(s.unique().toList(), [])
+
+    def test_unique_generator_stream(self):
+        s = stream(ItrFromFunc(lambda: xrange(4)))
+        u = s.unique()
+        self.assertListEqual(u.toList(), [0, 1, 2, 3])
+        self.assertListEqual(u.toList(), [0, 1, 2, 3])
 
 
 """

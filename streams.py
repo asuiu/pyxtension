@@ -114,6 +114,15 @@ class _IStream(collections.Iterable):
                     raise newEl.exc_info[0], newEl.exc_info[1], newEl.exc_info[2]
                 yield newEl
 
+    @staticmethod
+    def __unique_generator(itr, f):
+        st = set()
+        for el in itr:
+            m_el = f(el)
+            if m_el not in st:
+                st.add(m_el)
+                yield el
+
     def fastmap(self, f, poolSize=16):
         """
         Parallel unordered map using multithreaded pool.
@@ -371,6 +380,15 @@ class _IStream(collections.Iterable):
     def zip(self):
         return stream(izip(*(self.toList())))
 
+    def unique(self, predicate = lambda x: x):
+        """
+        The stream items should be hashable and comparable.
+        :param predicate: optional, maps the elements to comparable objects
+        :type predicate: (T) -> U
+        :return: Unique elements appearing in the same order. Following copies of same elements will be ignored.
+        :rtype: stream[U]
+        """
+        return stream(ItrFromFunc(lambda: _IStream.__unique_generator(self, predicate)))
 
     def dumpToPickle(self, fileStream):
         '''
