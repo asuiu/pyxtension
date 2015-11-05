@@ -261,6 +261,15 @@ class StreamTestCase(unittest.TestCase):
         s = stream([('a', 'b'), ('a', 'c')])
         self.assertDictEqual(s.toSumCounter(), {'a': 'bc'})
 
+    def test_keyBy_nominal(self):
+        self.assertListEqual(stream(['a', 'bb', '']).keyBy(len).toList(), [(1, 'a'), (2, 'bb'), (0, '')])
+
+    def test_keys_nominal(self):
+        self.assertListEqual(stream([(1, 'a'), (2, 'bb'), (0, '')]).keys().toList(), [1, 2, 0])
+
+    def test_values_nominal(self):
+        self.assertListEqual(stream([(1, 'a'), (2, 'bb'), (0, '')]).values().toList(), ['a', 'bb', ''])
+
 
 """
 Allow for these test cases to be run from the command line

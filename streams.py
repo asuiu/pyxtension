@@ -2,6 +2,8 @@
 # coding:utf-8
 # Author: ASU --<andrei.suiu@gmail.com>
 # Purpose: utility library
+from operator import itemgetter
+
 try:  # in Python 3.x the cPickle do not exist anymore
     import cPickle as pickle
 except ImportError:
@@ -197,8 +199,30 @@ class _IStream(collections.Iterable):
                 return True
         return False
 
-    def keyBy(self, keyfunc):
+    def keyBy(self, keyfunc = lambda _:_):
+        """
+        :param keyfunc: function to map values to keys
+        :type keyfunc: (V) -> T
+        :return: stream of Key, Value pairs
+        :rtype: stream[( T, V )]
+        """
         return self.map(lambda h: (keyfunc(h), h))
+
+    def keys(self):
+        """
+        Applies only on streams of 2-uples
+        :return: stream consisted of first element of tuples
+        :rtype: stream[T]
+        """
+        return self.map(itemgetter(0))
+
+    def values(self):
+        """
+        Applies only on streams of 2-uples
+        :return: stream consisted of second element of tuples
+        :rtype: stream[T]
+        """
+        return self.map(itemgetter(1))
 
     def groupBy(self, keyfunc = lambda _:_):
         """
@@ -260,7 +284,7 @@ class _IStream(collections.Iterable):
     def toSumCounter(self):
         """
         Elements should be tuples (T, V) where V can be summed
-        :return:sdict on stream elements
+        :return: sdict on stream elements
         :rtype: sdict[ T, V ]
         """
         res = sdict()
