@@ -200,10 +200,14 @@ class _IStream(collections.Iterable):
     def keyBy(self, keyfunc):
         return self.map(lambda h: (keyfunc(h), h))
 
-    def groupBy(self, keyfunc):
+    def groupBy(self, keyfunc = lambda _:_):
         """
-        groupBy(keyfunc]) -> create an iterator which returns
-        (key, sub-iterator) grouped by each value of key(value).
+        groupBy([keyfunc]) -> Make an iterator that returns consecutive keys and groups from the iterable.
+        The iterable needs not to be sorted on the same key function, but the keyfunction need to return hasable objects.
+        :param keyfunc: [Optional] The key is a function computing a key value for each element.
+        :type keyfunc: (T) -> (V)
+        :return: (key, sub-iterator) grouped by each value of key(value).
+        :rtype: stream[ ( V, slist[T] ) ]
         """
         # return stream(
         # 	ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], stream(kv[1])))
@@ -252,6 +256,20 @@ class _IStream(collections.Iterable):
 
     def toMap(self):
         return sdict(self)
+
+    def toSumCounter(self):
+        """
+        Elements should be tuples (T, V) where V can be summed
+        :return:sdict on stream elements
+        :rtype: sdict[ T, V ]
+        """
+        res = sdict()
+        for k,v in self:
+            if k in res:
+                res[k] += v
+            else:
+                res[k] = v
+        return res
 
     def toJson(self):
         from Json import Json
@@ -384,8 +402,8 @@ class _IStream(collections.Iterable):
         for el in self:
             sm += el
             n += 1
-        if n < 2:
-            raise ValueError('Standard deviation requires at least two data points')
+        if n < 1:
+            raise ValueError('Standard deviation requires at least one data point')
         mean = float(sm) / n
         ss = sum((x - mean) ** 2 for x in self)
         pvar = ss / n  # the population variance

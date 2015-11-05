@@ -4,7 +4,7 @@ except ImportError:
     ifilter = filter
 from io import BytesIO
 
-try: # Python 3.x doesn't have cPickle module
+try:  # Python 3.x doesn't have cPickle module
     import cPickle as pickle
 except ImportError:
     import pickle
@@ -217,8 +217,8 @@ class StreamTestCase(unittest.TestCase):
             res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
 
     def test_unique_nominal(self):
-        s = stream([1,2,3,1,2])
-        self.assertListEqual(s.unique().toList(), [1,2,3])
+        s = stream([1, 2, 3, 1, 2])
+        self.assertListEqual(s.unique().toList(), [1, 2, 3])
 
     def test_unique_mapping(self):
         s = stream(['abc', 'def', 'a', 'b', 'ab'])
@@ -240,7 +240,7 @@ class StreamTestCase(unittest.TestCase):
 
     def test_pstddev_exception(self):
         with self.assertRaises(ValueError):
-            stream([1]).pstddev()
+            stream([]).pstddev()
 
     def test_mean(self):
         self.assertAlmostEqual(stream([1, 2, 3, 4]).mean(), 2.5)
@@ -248,6 +248,19 @@ class StreamTestCase(unittest.TestCase):
     def test_mean_exception(self):
         with self.assertRaises(ValueError):
             stream([]).mean()
+
+    def test_toSumCounter_nominal(self):
+        s = stream([('a', 2), ('a', 4), ('b', 2.1), ('b', 3), ('c', 2)])
+        self.assertDictEqual(s.toSumCounter(), {'a': 6, 'b': 5.1, 'c': 2})
+
+    def test_toSumCounter_onEmptyStream(self):
+        s = stream([])
+        self.assertDictEqual(s.toSumCounter(), {})
+
+    def test_toSumCounter_onStrings(self):
+        s = stream([('a', 'b'), ('a', 'c')])
+        self.assertDictEqual(s.toSumCounter(), {'a': 'bc'})
+
 
 """
 Allow for these test cases to be run from the command line
