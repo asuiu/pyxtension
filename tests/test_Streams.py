@@ -265,7 +265,7 @@ class StreamTestCase(unittest.TestCase):
         self.assertListEqual(stream(['a', 'bb', '']).keyBy(len).toList(), [(1, 'a'), (2, 'bb'), (0, '')])
 
     def test_keys_nominal(self):
-        self.assertListEqual(stream([(1, 'a'), (2, 'bb'), (0, '')]).keys().toList(), [1, 2, 0])
+        self.assertListEqual(stream([(1, 'a'), (2, 'bb'), (0, '')]).keystream().toList(), [1, 2, 0])
 
     def test_values_nominal(self):
         self.assertListEqual(stream([(1, 'a'), (2, 'bb'), (0, '')]).values().toList(), ['a', 'bb', ''])

@@ -69,8 +69,6 @@ class MapException:
 
 
 class _IStream(collections.Iterable):
-
-
     def map(self, f):
         '''
 
@@ -158,7 +156,6 @@ class _IStream(collections.Iterable):
                 hasNext = False
         return stream(_IStream.__fastmap_generator(itr, qin, qout, threadPool))
 
-
     def enumerate(self):
         return stream(izip(xrange(0, sys.maxint), self))
 
@@ -199,7 +196,7 @@ class _IStream(collections.Iterable):
                 return True
         return False
 
-    def keyBy(self, keyfunc = lambda _:_):
+    def keyBy(self, keyfunc=lambda _: _):
         """
         :param keyfunc: function to map values to keys
         :type keyfunc: (V) -> T
@@ -208,7 +205,7 @@ class _IStream(collections.Iterable):
         """
         return self.map(lambda h: (keyfunc(h), h))
 
-    def keys(self):
+    def keystream(self):
         """
         Applies only on streams of 2-uples
         :return: stream consisted of first element of tuples
@@ -224,7 +221,7 @@ class _IStream(collections.Iterable):
         """
         return self.map(itemgetter(1))
 
-    def groupBy(self, keyfunc = lambda _:_):
+    def groupBy(self, keyfunc=lambda _: _):
         """
         groupBy([keyfunc]) -> Make an iterator that returns consecutive keys and groups from the iterable.
         The iterable needs not to be sorted on the same key function, but the keyfunction need to return hasable objects.
@@ -288,7 +285,7 @@ class _IStream(collections.Iterable):
         :rtype: sdict[ T, V ]
         """
         res = sdict()
-        for k,v in self:
+        for k, v in self:
             if k in res:
                 res[k] += v
             else:
@@ -447,7 +444,7 @@ class _IStream(collections.Iterable):
     def zip(self):
         return stream(izip(*(self.toList())))
 
-    def unique(self, predicate = lambda x: x):
+    def unique(self, predicate=lambda x: x):
         """
         The stream items should be hashable and comparable.
         :param predicate: optional, maps the elements to comparable objects
