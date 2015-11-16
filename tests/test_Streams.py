@@ -1,3 +1,5 @@
+from mock import MagicMock
+
 try:  # Python 3.x doesn't have ifilter
     from itertools import ifilter
 except ImportError:
@@ -270,6 +272,34 @@ class StreamTestCase(unittest.TestCase):
     def test_values_nominal(self):
         self.assertListEqual(stream([(1, 'a'), (2, 'bb'), (0, '')]).values().toList(), ['a', 'bb', ''])
 
+    def test_toMap(self):
+        self.assertDictEqual(stream(((1, 2), (3, 4))).toMap(), {1: 2, 3: 4})
+
+    def test_joinWithString(self):
+        s = "|"
+        strings = ('a', 'b', 'c')
+        self.assertEqual(stream(iter(strings)).join(s), s.join(strings))
+
+    def test_joinWithFunction(self):
+        class F:
+            def __init__(self):
+                self.counter = 0
+
+            def __call__(self, *args, **kwargs):
+                self.counter += 1
+                return str(self.counter)
+
+        strings = ('a', 'b', 'c')
+        f = F()
+        self.assertEqual(stream(iter(strings)).join(f), "a1b2c")
+
+    def test_mkString(self):
+        streamToTest = stream(('a', 'b', 'c'))
+        mock = MagicMock()
+        joiner = ","
+        streamToTest.join = mock
+        streamToTest.mkString(joiner)
+        mock.assert_called_once_with(joiner)
 
 """
 Allow for these test cases to be run from the command line

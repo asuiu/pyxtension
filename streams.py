@@ -363,7 +363,7 @@ class _IStream(collections.Iterable):
                     last = n
                     r += n
                 except StopIteration:
-                    pass
+                    break
             return r
 
     def mkString(self, c):
