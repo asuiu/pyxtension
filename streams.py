@@ -584,6 +584,22 @@ class AbstractSynchronizedBufferedStream(stream):
         return object.__repr__(self)
 
 
+class SynchronizedBufferedStream(AbstractSynchronizedBufferedStream):
+    def __init__(self, iteratorOverBuffers):
+        """
+        :param bufferGetter: iterator over slist objects
+        :type bufferGetter: stream[slist[T]]
+        """
+        self.__iteratorOverBuffers = iter(iteratorOverBuffers)
+        super(SynchronizedBufferedStream, self).__init__()
+
+    def _getNextBuffer(self):
+        try:
+            return next(self.__iteratorOverBuffers)
+        except StopIteration:
+            return slist()
+
+
 class sset(set, _IStream):
     def __init__(self, *args, **kwrds):
         set.__init__(self, *args, **kwrds)
