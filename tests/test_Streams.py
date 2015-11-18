@@ -301,6 +301,15 @@ class StreamTestCase(unittest.TestCase):
         streamToTest.mkString(joiner)
         mock.assert_called_once_with(joiner)
 
+    def test_reversedNominal(self):
+        s = slist([1, 2, 3])
+        self.assertListEqual(s.reversed().toList(), [3, 2, 1])
+
+    def test_reversedException(self):
+        s = stream(xrange(1, 2, 3))
+        with self.assertRaises(TypeError):
+            s.reversed()
+
 """
 Allow for these test cases to be run from the command line
 """

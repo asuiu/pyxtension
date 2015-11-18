@@ -183,6 +183,12 @@ class _IStream(collections.Iterable):
         """
         return stream(ItrFromFunc(lambda: ifilter(predicate, self)))
 
+    def reversed(self):
+        try:
+            return stream(reversed(self))
+        except TypeError:
+            raise TypeError("Can not reverse stream")
+
     def exists(self, f):
         """
         Tests whether a predicate holds for some of the elements of this sequence.
@@ -532,6 +538,50 @@ class stream(_IStream):
         if isinstance(file, basestring):
             file = openByExtension(file, mode='r', buffering=2 ** 12)
         return stream(stream.__unpickleStreamGenerator(file, format, statHandler))
+
+
+class AbstractSynchronizedBufferedStream(stream):
+    """
+    Thread-safe buffered stream.
+    Just implement the _getNextBuffer() to return a slist() and you are good to go.
+    """
+
+    def __init__(self):
+        self.__queue = slist()
+        self.__lock = threading.RLock()
+        self.__idx = -1
+
+    def next(self):
+        self.__lock.acquire()
+        try:
+            val = self.__queue[self.__idx]
+        except IndexError:
+            self.__queue = self._getNextBuffer()
+            assert isinstance(self.__queue, slist)
+            if len(self.__queue) == 0:
+                raise StopIteration
+            val = self.__queue[0]
+            self.__idx = 0
+
+        self.__idx += 1
+        self.__lock.release()
+        return val
+
+    def __iter__(self):
+        return self
+
+    def _getNextBuffer(self):
+        """
+        :return: a list of items for the buffer
+        :rtype: slist[T]
+        """
+        raise NotImplementedError
+
+    def __str__(self):
+        return object.__str__(self)
+
+    def __repr__(self):
+        return object.__repr__(self)
 
 
 class sset(set, _IStream):
