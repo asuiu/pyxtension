@@ -31,6 +31,8 @@ from fileutils import openByExtension
 
 __author__ = 'ASU'
 
+_IDENTITY_FUNC = lambda _: _
+
 
 class CallableGeneratorContainer:
     def __init__(self, iterableFunctions):
@@ -165,7 +167,7 @@ class _IStream(collections.Iterable):
             for j in f(i):
                 yield j
 
-    def flatMap(self, predicate=lambda x: x):
+    def flatMap(self, predicate=_IDENTITY_FUNC):
         """
         :param predicate: predicate is a function that will receive elements of self collection and return an iterable
             By default predicate is an identity function
@@ -202,7 +204,7 @@ class _IStream(collections.Iterable):
                 return True
         return False
 
-    def keyBy(self, keyfunc=lambda _: _):
+    def keyBy(self, keyfunc=_IDENTITY_FUNC):
         """
         :param keyfunc: function to map values to keys
         :type keyfunc: (V) -> T
@@ -227,7 +229,7 @@ class _IStream(collections.Iterable):
         """
         return self.map(itemgetter(1))
 
-    def groupBy(self, keyfunc=lambda _: _):
+    def groupBy(self, keyfunc=_IDENTITY_FUNC):
         """
         groupBy([keyfunc]) -> Make an iterator that returns consecutive keys and groups from the iterable.
         The iterable needs not to be sorted on the same key function, but the keyfunction need to return hasable objects.
@@ -384,13 +386,29 @@ class _IStream(collections.Iterable):
     def sum(self):
         return sum(self)
 
-    def min(self, **kwargs):
-        return min(self, **kwargs)
+    def min(self, key=_IDENTITY_FUNC):
+        return min(self, key=key)
+
+    def min_default(self, default, key=_IDENTITY_FUNC):
+        """
+        :param default: returned if there's no minimum in stream (ie empty stream)
+        :type default: T
+        :param key: the same meaning as used for the builtin min()
+        :type key: (T) -> V
+        :rtype: T
+        """
+        try:
+            return min(self, key=key)
+        except ValueError as e:
+            if "empty sequence" in e.message:
+                return default
+            else:
+                raise
 
     def max(self, **kwargs):
         return max(self, **kwargs)
 
-    def maxes(self, key=lambda x: x):
+    def maxes(self, key=_IDENTITY_FUNC):
         i = iter(self)
         aMaxes = [next(i)]
         mval = key(aMaxes[0])
@@ -404,7 +422,7 @@ class _IStream(collections.Iterable):
                 ##if
         return slist(aMaxes)
 
-    def mins(self, key=lambda x: x):
+    def mins(self, key=_IDENTITY_FUNC):
         i = iter(self)
         aMaxes = [next(i)]
         mval = key(aMaxes[0])
@@ -450,7 +468,7 @@ class _IStream(collections.Iterable):
     def zip(self):
         return stream(izip(*(self.toList())))
 
-    def unique(self, predicate=lambda x: x):
+    def unique(self, predicate=_IDENTITY_FUNC):
         """
         The stream items should be hashable and comparable.
         :param predicate: optional, maps the elements to comparable objects

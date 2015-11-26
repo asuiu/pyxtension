@@ -141,6 +141,19 @@ class StreamTestCase(unittest.TestCase):
     def test_mins(self):
         self.assertEquals(stream(['abc', 'a', 'abcd', 'defg', 'cde']).mins(lambda s: len(s)), ['a'])
 
+    def test_min_nominal(self):
+        self.assertEqual(stream([2, 1]).min(), 1)
+        self.assertEqual(stream(['abc', 'a']).min(key=len), 'a')
+
+    def test_min_raises_on_empty_sequence(self):
+        with self.assertRaises(ValueError):
+            stream().min()
+
+    def test_min_default_nominal(self):
+        self.assertEqual(stream([2, 1]).min_default('default'), 1)
+        self.assertEqual(stream(['abc', 'a']).min_default('default', key=len), 'a')
+        self.assertEqual(stream().min_default('default'), 'default')
+
     def test_defaultstreamdictBasics(self):
         dd = defaultstreamdict(slist)
         dd[1].append(2)
@@ -309,6 +322,7 @@ class StreamTestCase(unittest.TestCase):
         s = stream(xrange(1, 2, 3))
         with self.assertRaises(TypeError):
             s.reversed()
+
 
 """
 Allow for these test cases to be run from the command line
