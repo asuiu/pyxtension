@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # coding:utf-8
 # Author: ASU --<andrei.suiu@gmail.com>
-# Purpose: Concurrent utility classes
+# Purpose: Concurrent utility classes (name coming from RACEconditionLIBrary)
 # Created: 11/26/2015
 
 __author__ = 'ASU'
