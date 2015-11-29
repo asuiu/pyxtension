@@ -73,7 +73,6 @@ class MapException:
 class _IStream(collections.Iterable):
     def map(self, f):
         '''
-
         :param f:
         :type f: (T) -> V
         :return:
@@ -173,7 +172,7 @@ class _IStream(collections.Iterable):
             By default predicate is an identity function
         :type predicate: (self.elementsType)-> collections.Iterable[T]
         :return: will return stream of objects of the same type of elements from the stream returned by predicate()
-        :rtype:
+        :rtype: stream[T]
         """
         return stream(ItrFromFunc(lambda: self.__class__.__flatMapGenerator(self, predicate)))
 
@@ -258,7 +257,7 @@ class _IStream(collections.Iterable):
         return sdict(collections.Counter(self))
 
     def distinct(self):
-        return self.toSet()
+        return self.unique()
 
     def reduce(self, f, init=None):
         if init is None:

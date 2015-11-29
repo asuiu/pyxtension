@@ -47,7 +47,7 @@ class StreamTestCase(unittest.TestCase):
         self.assertEquals(s.toList(), [0, 2, 4])
 
     def test_streamExists(self):
-        s = stream(xrange(2))
+        s = stream([0, 1])
         self.assertEqual(s.exists(lambda e: e == 0), True)
         self.assertEqual(s.exists(lambda e: e == 2), False)
 
@@ -101,11 +101,13 @@ class StreamTestCase(unittest.TestCase):
         result = stream.loadFromPickled(sio)
         self.assertEquals(list(expected), list(result))
 
-    def test_flatMap_basics(self):
-        l = stream(({1: 2, 3: 4}, {5: 6, 7: 8}))
-        self.assertEquals(l.flatMap(dict.itervalues).toSet(), set((2, 4, 6, 8)))
-        self.assertEquals(l.flatMap(dict.iterkeys).toSet(), set((1, 3, 5, 7)))
-        self.assertEquals(l.flatMap(dict.iteritems).toSet(), set(((1, 2), (5, 6), (3, 4), (7, 8))))
+    def test_flatMap_nominal(self):
+        s = stream([[1, 2], [3, 4], [4, 5]])
+        self.assertListEqual(s.flatMap().toList(), [1, 2, 3, 4, 4, 5])
+
+    def test_flatMap_withPredicate(self):
+        s = stream(({1: 2, 3: 4}, {5: 6, 7: 8}))
+        self.assertEquals(s.flatMap(dict.iteritems).toSet(), set(((1, 2), (5, 6), (3, 4), (7, 8))))
 
     def test_flatMap_reiteration(self):
         l = stream(ItrFromFunc(lambda: (xrange(i) for i in xrange(5)))).flatMap()
