@@ -12,6 +12,28 @@ absolutely anywhere you can use a `dict`. While this is probably the class you
 want to use, there are a few caveats that follow from this being a `dict` under
 the hood.
 
+**Never again will you have to write code like this**:
+```python
+		body = {
+			'query': {
+				'filtered': {
+					'query': {
+						'match': {'description': 'addictive'}
+					},
+					'filter': {
+						'term': {'created_by': 'ASU'}
+					}
+				}
+			}
+		}
+```
+
+From now on, you may simply write the following three lines:
+```python
+        body = Json()
+		body.query.filtered.query.match.description = 'addictive'
+		body.query.filtered.filter.term.created_by = 'ASU'
+```
 ### streams.py
 #### stream
 `streams` subclasses `collections.Iterable`. It's the same Python iterable, but with more added methods.
@@ -35,30 +57,206 @@ From now on, you may simply write the following lines:
 64
 ```
 
+#### Basic methods
+###### **map(f)**
+Identic with builtin `map` but returns a stream
+
+
+###### **fastmap(f, poolSize=16)**
+Parallel unordered map using multithreaded pool.
+It can replace the `map` when the ordered of results doesn't matter.
+
+It spawns at most `poolSize` threads and applies the `f` function.
+
+The elements in the result stream appears in the unpredicted order.
+
+Because of CPython [GIL](https://wiki.python.org/moin/GlobalInterpreterLock) it's most usefull for I/O or CPU intensive consuming native functions, or on Jython or IronPython interpreters.
+
+:type f: (T) -> V
+
+:rtype: `stream`
+
+
+###### **flatMap(predicate=_IDENTITY_FUNC)**
+:param predicate: is a function that will receive elements of self collection and return an iterable
+
+By default predicate is an identity function
+
+:type predicate: (V)-> collections.Iterable[T]
+
+:return: will return stream of objects of the same type of elements from the stream returned by predicate()
+
+Example:
+```python
+stream([[1, 2], [3, 4], [4, 5]]).flatMap().toList() == [1, 2, 3, 4, 4, 5]
+```
+
+
+###### **filter(predicate)**
+identic with builtin filter, but returns stream
+
+
+###### **reversed()**
+returns reversed stream
+
+
+###### **exists(predicate)**
+Tests whether a predicate holds for some of the elements of this sequence.
+
+:rtype: bool
+
+Example:
+```python
+stream([1, 2, 3]).exists(0) -> False
+stream([1, 2, 3]).exists(1) -> True
+```
+
+
+###### **keyBy(keyfunc = _IDENTITY_FUNC)**
+Transforms stream of values to a stream of tuples (key, value)
+
+:param keyfunc: function to map values to keys
+
+:type keyfunc: (V) -> T
+
+:return: stream of Key, Value pairs
+
+:rtype: stream[( T, V )]
+
+Example:
+```python
+stream([1, 2, 3, 4]).keyBy(lambda _:_ % 2) -> [(1, 1), (0, 2), (1, 3), (0, 4)]
+```
+
+###### **groupBy()**
+groupBy([keyfunc]) -> Make an iterator that returns consecutive keys and groups from the iterable.
+
+The iterable needs not to be sorted on the same key function, but the keyfunction need to return hasable objects.
+
+:param keyfunc: [Optional] The key is a function computing a key value for each element.
+
+:type keyfunc: (T) -> (V)
+
+:return: (key, sub-iterator) grouped by each value of key(value).
+
+:rtype: stream[ ( V, slist[T] ) ]
+
+Example:
+```python
+stream([1, 2, 3, 4]).groupBy(lambda _: _ % 2) -> [(0, [2, 4]), (1, [1, 3])]
+```
+
+###### **countByValue()**
+Returns a collections.Counter of values
+
+Example
+```python
+```
+
+###### **distinct()**
+Returns stream of distinct values. Values must be hashable.
+
+
+###### **reduce(f, init=None)**
+same arguments with builtin reduce() function
+
+
+###### **toSet()**
+returns sset() instance
+
+
+###### **toList()**
+returns slist() instance
+
+
+###### **toMap()**
+returns sdict() instance
+
+
+###### **sorted(key=None, cmp=None, reverse=False)**
+same arguments with builtin sorted()
+
+
+ ###### **size()**
+returns length of stream. Use carefully on infinite streams.
+
+
+###### **join(f)**
+Returns a string joined by f. Proivides same functionality as str.join() builtin method.
+
+if f is basestring, uses it to join the stream, else f should be a callable that returns a string to be used for join
+
+
+###### **mkString(f)**
+identic with join(f)
+
+
+###### **take(n)**
+    returns first n elements from stream
+
+
+###### **head()**
+    returns first element from stream
+
+
+###### **zip()**
+    the same behavior with itertools.izip()
+
+###### **unique(predicate=_IDENTITY_FUNC)**
+    Returns a stream of unique (according to predicate) elements appearing in the same order as in original stream
+
+    The items returned by predicate should be hashable and comparable.
+
+
+#### Statistics related methods
+###### **entropy()**
+calculates the Shannon entropy of the values from stream
+
+
+###### **pstddev()**
+Calculates the population standard deviation.
+
+
+###### **mean()**
+returns the arithmetical mean of the values
+
+
+###### **sum()**
+returns the sum of elements from stream
+
+
+###### **min(key=_IDENTITY_FUNC)**
+same functionality with builtin min() funcion
+
+
+###### **min_default(default, key=_IDENTITY_FUNC)**
+same functionality with min() but returns :default: when called on empty streams
+
+
+###### **max()**
+same functionality with builtin max()
+
+
+###### **maxes(key=_IDENTITY_FUNC)**
+returns a stream of max values from stream
+
+
+###### **mins(key=_IDENTITY_FUNC)**
+returns a stream of min values from stream
+
+
+### Other classes
+##### slist
+Inherits `streams.stream` and built-in `list` classes, and keeps in memory a list allowing faster index access
+##### sset
+Inherits `streams.stream` and built-in `set` classes, and keeps in memory the whole set of values
+##### sdict
+Inherits `streams.stream` and built-in `dict`, and keeps in memory the dict object.
+##### defaultstreamdict
+Inherits `streams.sdict` and adds functionality  of `collections.defaultdict` from stdlib
+
+
 ### [Json](https://github.com/asuiu/pyxtension/blob/master/Json.py)
-
-**Never again will you have to write code like this**:
-```python
-		body = {
-			'query': {
-				'filtered': {
-					'query': {
-						'match': {'description': 'addictive'}
-					},
-					'filter': {
-						'term': {'created_by': 'ASU'}
-					}
-				}
-			}
-		}
-```
-
-From now on, you may simply write the following three lines:
-```python
-        body = Json()
-		body.query.filtered.query.match.description = 'addictive'
-		body.query.filtered.filter.term.created_by = 'ASU'
-```
 
 [Json](https://github.com/asuiu/pyxtension/blob/master/Json.py) is a module that provides mapping objects that allow their elements to be accessed both as keys and as attributes:
 ```python
@@ -79,15 +277,6 @@ Attribute access makes it easy to create convenient, hierarchical settings objec
 
     cursor.execute("SELECT column FROM table;")
 ```
-
-### Installation
-from Github::
-
-    $ git clone https://github.com/asuiu/pyxtension.git
-
-or
-
-    $ git submodule add https://github.com/asuiu/pyxtension.git
 
 ### Basic Usage
 
@@ -176,6 +365,15 @@ Assignment as keys will still work::
     > json.foo
     {'bar': 'baz'}
 ```
+### Installation
+from Github::
+
+    $ git clone https://github.com/asuiu/pyxtension.git
+
+or
+
+    $ git submodule add https://github.com/asuiu/pyxtension.git
+
 
 ### License
 pyxtension is released under a GNU Public license.
