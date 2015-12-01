@@ -388,13 +388,14 @@ Assignment as keys will still work::
 ```
 ### Installation
 from Github::
-
+```
     $ git clone https://github.com/asuiu/pyxtension.git
+    $ python setyp.py install
 
 or
 
     $ git submodule add https://github.com/asuiu/pyxtension.git
-
+```
 
 ### License
 pyxtension is released under a GNU Public license.
