@@ -17,7 +17,7 @@ import time
 if sys.version_info[0] >= 3:
     xrange = range
 
-from streams import stream, slist, sset, sdict, ItrFromFunc, defaultstreamdict
+from pyxtension.streams import stream, slist, sset, sdict, ItrFromFunc, defaultstreamdict
 
 __author__ = 'ASU'
 
@@ -58,7 +58,7 @@ class StreamTestCase(unittest.TestCase):
         self.assertListEqual(s.toList(), [1, 2, 3, 4])
 
     def testStreamToJson(self):
-        from Json import Json
+        from pyxtension.Json import Json
 
         j = stream((("a", 2), (3, 4))).toJson()
         self.assertIsInstance(j, Json)

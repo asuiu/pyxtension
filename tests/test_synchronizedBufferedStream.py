@@ -5,7 +5,7 @@
 # Created: 11/18/2015
 from unittest import TestCase, main
 
-from streams import SynchronizedBufferedStream, slist
+from pyxtension.streams import SynchronizedBufferedStream, slist
 
 __author__ = 'ASU'
 

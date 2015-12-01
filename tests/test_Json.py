@@ -4,8 +4,8 @@ import types
 import unittest
 import sys
 
-from streams import slist, stream, sdict
-from Json import Json
+from pyxtension.streams import slist, stream, sdict
+from pyxtension.Json import Json
 
 __author__ = 'ASU'
 
