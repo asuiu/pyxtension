@@ -57,6 +57,21 @@ From now on, you may simply write the following lines:
 64
 ```
 
+#### A Word Count [Map-Reduce](https://en.wikipedia.org/wiki/MapReduce) naive example using multithreading map
+```python
+corpus = [
+    "MapReduce is a programming model and an associated implementation for processing and generating large data sets with a parallel, distributed algorithm on a cluster.",
+    "At Google, MapReduce was used to completely regenerate Google's index of the World Wide Web",
+    "Conceptually similar approaches have been very well known since 1995 with the Message Passing Interface [3] standard having reduce [4] and scatter operations."]
+
+def reduceMaps(m1, m2):
+    for k, v in m2.iteritems():
+        m1[k] = m1.get(k, 0) + v
+    return m1
+
+word_counts = stream(corpus).map(lambda line: stream(line.lower().split(' ')).countByValue()).reduce(reduceMaps)
+```
+
 #### Basic methods
 ###### **map(f)**
 Identic with builtin `map` but returns a stream
@@ -151,10 +166,14 @@ Returns a collections.Counter of values
 
 Example
 ```python
+stream(['a', 'b', 'a', 'b', 'c', 'd']).countByValue() == {'a': 2, 'b': 2, 'c': 1, 'd': 1}
 ```
 
 ###### **distinct()**
 Returns stream of distinct values. Values must be hashable.
+```python
+stream(['a', 'b', 'a', 'b', 'c', 'd']).distinct() == {'a', 'b', 'c', 'd'}
+```
 
 
 ###### **reduce(f, init=None)**
@@ -177,7 +196,7 @@ returns sdict() instance
 same arguments with builtin sorted()
 
 
- ###### **size()**
+###### **size()**
 returns length of stream. Use carefully on infinite streams.
 
 
