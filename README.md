@@ -62,14 +62,16 @@ From now on, you may simply write the following lines:
 corpus = [
     "MapReduce is a programming model and an associated implementation for processing and generating large data sets with a parallel, distributed algorithm on a cluster.",
     "At Google, MapReduce was used to completely regenerate Google's index of the World Wide Web",
-    "Conceptually similar approaches have been very well known since 1995 with the Message Passing Interface [3] standard having reduce [4] and scatter operations."]
+    "Conceptually similar approaches have been very well known since 1995 with the Message Passing Interface standard having reduce and scatter operations."]
 
 def reduceMaps(m1, m2):
     for k, v in m2.iteritems():
         m1[k] = m1.get(k, 0) + v
     return m1
 
-word_counts = stream(corpus).map(lambda line: stream(line.lower().split(' ')).countByValue()).reduce(reduceMaps)
+word_counts = stream(corpus).\
+    fastmap(lambda line: stream(line.lower().split(' ')).countByValue()).\
+    reduce(reduceMaps)
 ```
 
 #### Basic methods
