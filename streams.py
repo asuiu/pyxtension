@@ -775,6 +775,8 @@ class defaultstreamdict(sdict):
     def __repr__(self):
         return 'defaultdict(%s, %s)' % (self.__default_factory,
                                         super(self.__class__, self).__repr__())
+    def __str__(self):
+        return dict.__str__(self)
 
 
 def smap(f, itr):
