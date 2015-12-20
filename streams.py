@@ -490,6 +490,24 @@ class _IStream(collections.Iterable):
             assert len(p) == 4
             fileStream.write(p + s)
 
+    def exceptIndexes(self, *indexes):
+        """
+        Doesn't support negative indexes as the stream doesn't have a length
+        :type indexes: list[int]
+        :return: the stream with filtered out elements on <indexes> positions
+        :rtype: stream [ T ]
+        """
+
+        def indexIgnorer(indexSet, _stream):
+            i = 0
+            for el in _stream:
+                if i not in indexSet:
+                    yield el
+                i += 1
+
+        indexSet = sset(indexes)
+        return stream(ItrFromFunc(lambda: indexIgnorer(indexSet, self)))
+
 
 class stream(_IStream):
     def __init__(self, itr=None):
@@ -662,9 +680,6 @@ class slist(list, _IStream):
     def __init__(self, *args, **kwrds):
         list.__init__(self, *args, **kwrds)
 
-    # def __iter__(self):
-    #     return list.__iter__(self)
-
     def __getslice__(self, i, j):
         def gs(strm):
             itr = iter(strm)
@@ -699,6 +714,25 @@ class slist(list, _IStream):
     def insert(self, i, x):
         list.insert(self, i, x)
         return self
+
+    def exceptIndexes(self, *indexes):
+        """
+        Supports negative indexes
+        :type indexes: list[int]
+        :return: the stream with filtered out elements on <indexes> positions
+        :rtype: stream [ T ]
+        """
+
+        def indexIgnorer(indexSet, _stream):
+            i = 0
+            for el in _stream:
+                if i not in indexSet:
+                    yield el
+                i += 1
+
+        sz = self.size()
+        indexSet = stream(indexes).map(lambda i: i if i >= 0 else i + sz).toSet()
+        return stream(ItrFromFunc(lambda: indexIgnorer(indexSet, self)))
 
 
 class sdict(dict, _IStream):
@@ -775,6 +809,7 @@ class defaultstreamdict(sdict):
     def __repr__(self):
         return 'defaultdict(%s, %s)' % (self.__default_factory,
                                         super(self.__class__, self).__repr__())
+
     def __str__(self):
         return dict.__str__(self)
 
