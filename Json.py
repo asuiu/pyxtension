@@ -295,6 +295,10 @@ class Json(sdict):
         return json.dumps(self.toOrig(), *args, **kwargs)
 
     def toString(self):
+        """
+        :return: deterministic sorted output string, that can be compared
+        :rtype: str
+        """
         return str(self)
 
     """To be removed and make Json serializable"""
