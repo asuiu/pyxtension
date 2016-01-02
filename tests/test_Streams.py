@@ -51,11 +51,26 @@ class StreamTestCase(unittest.TestCase):
         self.assertEqual(s.exists(lambda e: e == 0), True)
         self.assertEqual(s.exists(lambda e: e == 2), False)
 
-    def testStreamStr(self):
+    def test_stream_str_doesntChangeStream(self):
         s = stream(iter((1, 2, 3, 4)))
         str(s)
+        self.assertListEqual(s.toList(), [1, 2, 3, 4])
+
+    def test_stream_repr_doesntChangeStream(self):
+        s = stream(iter((1, 2, 3, 4)))
         repr(s)
         self.assertListEqual(s.toList(), [1, 2, 3, 4])
+
+    def test_slist_str_nominal(self):
+        l = [1, 2, 3]
+        s = slist(l)
+        s1 = str(s)
+        self.assertEquals(str(s), str(l))
+
+    def test_slist_repr_nominal(self):
+        l = [1, 2, 3]
+        s = slist(l)
+        self.assertEquals(repr(s), repr(l))
 
     def testStreamToJson(self):
         from pyxtension.Json import Json
