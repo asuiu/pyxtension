@@ -31,14 +31,17 @@ class JsonList(slist):
     def toOrig(self):
         return [isinstance(t, (Json, JsonList)) and t.toOrig() or t for t in self]
 
+    def toString(self):
+        return json.dumps(self)
+
 
 class Json(sdict):
     @classmethod
     def __myAttrs(cls):
         return set(dir(cls))
 
-    @classmethod
-    def load(cls, *args, **kwargs):
+    @staticmethod
+    def load(fp, *args, **kwargs):
         """Deserialize ``fp`` (a ``.read()``-supporting file-like object containing
         a JSON document) to a Python object.
 
@@ -65,10 +68,10 @@ class Json(sdict):
         To use a custom ``JSONDecoder`` subclass, specify it with the ``cls``
         kwarg; otherwise ``JSONDecoder`` is used.
         """
-        return cls(json.load(*args, **kwargs))
+        return Json.loads(fp.read(), *args, **kwargs)
 
-    @classmethod
-    def loads(cls, *args, **kwargs):
+    @staticmethod
+    def loads(*args, **kwargs):
         """Deserialize ``s`` (a ``str`` or ``unicode`` instance containing a JSON
         document) to a Python object.
 
@@ -108,7 +111,17 @@ class Json(sdict):
         To use a custom ``JSONDecoder`` subclass, specify it with the ``cls``
         kwarg; otherwise ``JSONDecoder`` is used.
         """
-        return cls(json.loads(*args, **kwargs))
+        d = json.loads(*args, **kwargs)
+        if isinstance(d, dict):
+            return Json(d)
+        elif isinstance(d, list):
+            return JsonList(d)
+        else:
+            raise NotImplementedError("Unknown JSON format: {}".format(d.__class__))
+
+    @staticmethod
+    def fromString(s, *args, **kwargs):
+        return Json.loads(s, *args, **kwargs)
 
     __decide = lambda self, j: isinstance(j, dict) and Json(j) or (isinstance(j, list) and slist(j) or j)
 
