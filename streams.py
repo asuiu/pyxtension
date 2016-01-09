@@ -300,9 +300,9 @@ class _IStream(collections.Iterable):
         return res
 
     def toJson(self):
-        from Json import Json
+        from Json import JsonList
 
-        return Json(self)
+        return JsonList(self)
 
     def __getitem__(self, i):
         itr = iter(self)
@@ -644,6 +644,7 @@ class sset(set, _IStream):
 
     # Below methods enable chaining and lambda using
     def update(self, *args, **kwargs):
+        # ToDo: Add option to update with iterables, as set.update supports only other set
         super(sset, self).update(*args, **kwargs)
         return self
 
@@ -763,6 +764,10 @@ class sdict(dict, _IStream):
     def update(self, other=None, **kwargs):
         super(sdict, self).update(other, **kwargs)
         return self
+
+    def toJson(self):
+        from Json import Json
+        return Json(self)
 
 
 class defaultstreamdict(sdict):
