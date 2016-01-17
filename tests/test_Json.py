@@ -1,11 +1,11 @@
 import copy
 import json
+import sys
 import types
 import unittest
-import sys
 
+from pyxtension.Json import Json, JsonList, FrozenJson
 from pyxtension.streams import slist, stream, sdict
-from pyxtension.Json import Json
 
 __author__ = 'ASU'
 
@@ -90,15 +90,10 @@ class JsonTestCase(unittest.TestCase):
         self.assertIsInstance(d, sdict)
         self.assertDictEqual({'st': set([1, 2])}, d)
 
-    def testSerializeDeserialize(self):
-        serialized = '{"command": "put", "details": {"platform": "fb", "cookie": "cookie1"}}'
-        j = Json(serialized)
-        self.assertEqual(serialized, j.dumps())
-
     def test_serializeDeserialize(self):
-        serialized = '{"command": "put", "details": {"platform": "fb", "cookie": "cookie1"}}'
+        serialized = '{"command":"put","details":{"cookie":"cookie1","platform":"fb"}}'
         j = Json(serialized)
-        self.assertEqual(serialized, j.dumps())
+        self.assertEqual(serialized, j.toString())
 
 TEST_VAL = [1, 2, 3]
 TEST_DICT = {'a': {'b': {'c': TEST_VAL}}}
@@ -216,8 +211,8 @@ class TestsFromAddict(unittest.TestCase):
 
     def test_complex_nested_structure(self):
         prop = Json()
-        prop.a = [(Json(), 2), [[]], [1, (2, 3), 0]]
-        self.assertDictEqual(prop, {'a': [({}, 2,), [[]], [1, (2, 3), 0]]})
+        prop.a = [[Json(), 2], [[]], [1, [2, 3], 0]]
+        self.assertDictEqual(prop, {'a': [[{}, 2, ], [[]], [1, [2, 3], 0]]})
 
     def test_tuple_key(self):
         prop = Json()
@@ -350,6 +345,40 @@ class TestsFromAddict(unittest.TestCase):
         # changing child of b should not affect a
         b.child = "new stuff"
         self.assertTrue(isinstance(a.child, Json))
+
+    def test_equal_objects_nominal(self):
+        j1 = Json({'a': 1, 'b': {'c': 'd'}})
+        j2 = Json({'a': 1, 'b': {'c': 'd'}})
+        j3 = Json({'a': 1, 'b': {'c': 'e'}})
+        self.assertEqual(j1, j2)
+        self.assertNotEqual(j1, j3)
+
+    def test_JsonList_converts_tuples(self):
+        jl = JsonList([(Json(), 2), [[]], [1, (2, 3), 0]])
+        self.assertListEqual(jl, [[{}, 2, ], [[]], [1, [2, 3], 0]])
+
+    def test_FrozenJson_nominal(self):
+        frozenJson = FrozenJson({'a': 'b'})
+        self.assertEqual(frozenJson.a, 'b')
+        with self.assertRaises(TypeError):
+            frozenJson.a = 'c'
+        with self.assertRaises(TypeError):
+            frozenJson.b = 'c'
+
+    def test_FrozenJson_hash(self):
+        d1 = {'a': 'b'}
+        fj1 = FrozenJson(d1)
+        d1['b'] = 'c'
+        fj2 = FrozenJson(d1)
+        del d1['b']
+        fj3 = FrozenJson(d1)
+        self.assertEqual(fj1, fj3)
+        self.assertNotEqual(fj1, fj2)
+        self.assertSetEqual({fj1, fj2, fj3}, {fj1, fj2})
+        self.assertTrue({fj1, fj2} <= {fj2, fj3})
+
+
+
 
 
 """

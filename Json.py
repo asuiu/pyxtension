@@ -20,8 +20,10 @@ class JsonList(slist):
     def __decide(cls, j):
         if isinstance(j, dict):
             return Json(j)
-        elif isinstance(j, (list, tuple)):
-            return slist(j)
+        elif isinstance(j, (list, tuple)) and not isinstance(j, JsonList):
+            return JsonList(map(Json._toJ, j))
+        elif isinstance(j, stream):
+            return JsonList(j.map(Json._toJ).toList())
         else:
             return j
 
@@ -316,6 +318,9 @@ class Json(sdict):
 
     """To be removed and make Json serializable"""
 
+    def __eq__(self, y):
+        return super(Json, self).__eq__(y)
+
     def reduce(self, f, init):
         return self.__reduce_ex__(2)
 
@@ -344,3 +349,14 @@ class Json(sdict):
             self.iteritems().
                 map(lambda kv: (kv[0], isinstance(kv[1], (Json, JsonList)) and kv[1].toOrig() or kv[1]))
         )
+
+
+class FrozenJson(Json):
+    def __init__(self, *args, **kwargs):
+        super(FrozenJson, self).__init__(*args, **kwargs)
+
+    def __setattr__(self, key, value):
+        raise TypeError("Can not update a FrozenJson instance by (key,value): ({},{})".format(key, value))
+
+    def __hash__(self):
+        return hash(self.toString())
