@@ -36,6 +36,21 @@ class JsonTestCase(unittest.TestCase):
         self.assertEqual(json.dumps(dict((("a", 2), (3, 4), ("d", {"d2": 4}))), separators=(',', ':'), sort_keys=True),
                          str(self.d))
 
+    def test_repr_from_dict(self):
+        d = {'a': 'a'}
+        j = Json(d)
+        self.assertEqual(repr(j), repr(d))
+
+    def test_repr_used_setattr(self):
+        j = Json()
+        j.a = 'a'
+        self.assertEqual(repr(j), repr({'a': 'a'}))
+
+    def test_forbiden_attrs(self):
+        j = Json()
+        with self.assertRaises(AttributeError):
+            j.__methods__()
+
     def testUpdateItems(self):
         d = Json((("a", 2), (3, 4), ("d", {"d2": 4})))
         d.d.d2 = 3

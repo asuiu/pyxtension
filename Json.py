@@ -38,6 +38,8 @@ class JsonList(slist):
 
 
 class Json(sdict):
+    FORBIDEN_METHODS = ('__methods__', '__members__')  # Introduced due to PyCharm debugging accessing these methods
+
     @classmethod
     def __myAttrs(cls):
         return set(dir(cls))
@@ -157,7 +159,6 @@ class Json(sdict):
         If the name is in the dict, we return it. Otherwise we set both
         the attr and item to a new instance of Dict.
         """
-
         if name in self:
             d = sdict.__getitem__(self, name)
             if isinstance(d, dict) and not isinstance(d, Json):
@@ -180,6 +181,10 @@ class Json(sdict):
             return j
 
     def __getattr__(self, item):
+        if item in self.FORBIDEN_METHODS:
+            raise AttributeError("Forbidden methods access to %s. Introduced due to PyCharm debugging problem." % str(
+                self.FORBIDEN_METHODS))
+
         return self.__getitem__(item)
 
     def __setattr__(self, key, value):
