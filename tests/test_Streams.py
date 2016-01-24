@@ -206,9 +206,11 @@ class StreamTestCase(unittest.TestCase):
     def test_stream_iadd(self):
         s1 = stream([1, 2])
         s1 += [3, 4]
-        self.assertEquals(s1.toList(), [1, 2, 3, 4])
-        self.assertEquals(s1.toList(), [1, 2, 3, 4])  # second time to exclude one time iterator bug
-        self.assertEquals(s1.toList(), [1, 2, 3, 4])
+        s1 += stream(xrange(5, 6))  # use xrange to cover the iterator case
+        self.assertEquals(s1.toList(), [1, 2, 3, 4, 5])
+        self.assertEquals(s1.toList(), [1, 2, 3, 4, 5])  # second time to exclude one time iterator bug
+        self.assertEquals(s1.toList(), [1, 2, 3, 4, 5])
+
 
     def test_stream_getitem(self):
         s = stream(i for i in xrange(1))
