@@ -69,7 +69,6 @@ class MapException:
     def __init__(self, exc_info):
         self.exc_info = exc_info
 
-
 class _IStream(collections.Iterable):
     def map(self, f):
         '''
@@ -484,11 +483,24 @@ class _IStream(collections.Iterable):
         :return: Nothing
         '''
         for el in self:
-            s = pickle.dumps(el, pickle.HIGHEST_PROTOCOL)
-            l = len(s)
-            p = struct.pack("<L", l)
-            assert len(p) == 4
-            fileStream.write(p + s)
+            fileStream.write(_IStream._picklePack(el))
+
+    def dumpPickledToWriter(self, writer):
+        '''
+        :param writer: should be binary output callable stream
+        :type writer: callable
+        :return: Nothing
+        '''
+        for el in self:
+            writer(_IStream._picklePack(el))
+
+    @staticmethod
+    def _picklePack(el):
+        s = pickle.dumps(el, pickle.HIGHEST_PROTOCOL)
+        l = len(s)
+        p = struct.pack("<L", l)
+        assert len(p) == 4
+        return p + s
 
     def exceptIndexes(self, *indexes):
         """
