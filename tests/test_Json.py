@@ -389,11 +389,8 @@ class TestsFromAddict(unittest.TestCase):
         fj3 = FrozenJson(d1)
         self.assertEqual(fj1, fj3)
         self.assertNotEqual(fj1, fj2)
-        self.assertSetEqual({fj1, fj2, fj3}, {fj1, fj2})
-        self.assertTrue({fj1, fj2} <= {fj2, fj3})
-
-
-
+        self.assertSetEqual(set([fj1, fj2, fj3]), set([fj1, fj2]))
+        self.assertTrue(set([fj1, fj2]) <= set([fj2, fj3]))
 
 
 """
