@@ -211,7 +211,6 @@ class StreamTestCase(unittest.TestCase):
         self.assertEquals(s1.toList(), [1, 2, 3, 4, 5])  # second time to exclude one time iterator bug
         self.assertEquals(s1.toList(), [1, 2, 3, 4, 5])
 
-
     def test_stream_getitem(self):
         s = stream(i for i in xrange(1))
         self.assertEqual(s[0], 0)
@@ -319,6 +318,11 @@ class StreamTestCase(unittest.TestCase):
         s = "|"
         strings = ('a', 'b', 'c')
         self.assertEqual(stream(iter(strings)).join(s), s.join(strings))
+
+    def test_joinWithNone(self):
+        s = ""
+        strings = ('a', 'b', 'c')
+        self.assertEqual(stream(iter(strings)).join(), s.join(strings))
 
     def test_joinWithFunction(self):
         class F:

@@ -355,8 +355,10 @@ class _IStream(collections.Iterable):
         except:
             return sum(1 for i in iter(self))
 
-    def join(self, f):
-        if isinstance(f, basestring):
+    def join(self, f=None):
+        if f is None:
+            return ''.join(self)
+        elif isinstance(f, basestring):
             return f.join(self)
         else:
             itr = iter(self)
