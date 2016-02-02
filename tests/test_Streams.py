@@ -124,6 +124,15 @@ class StreamTestCase(unittest.TestCase):
         result = stream.loadFromPickled(sio)
         self.assertEquals(list(expected), list(result))
 
+    def test_StreamFileReading(self):
+        sio = BytesIO()
+        expected = slist(slist((i,)) for i in xrange(10))
+        expected.dumpToPickle(sio)
+        sio = BytesIO(sio.getvalue())
+
+        result = stream.loadFromPickled(sio)
+        self.assertEquals(list(expected), list(result))
+
     def test_flatMap_nominal(self):
         s = stream([[1, 2], [3, 4], [4, 5]])
         self.assertListEqual(s.flatMap().toList(), [1, 2, 3, 4, 4, 5])

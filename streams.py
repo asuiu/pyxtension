@@ -55,7 +55,7 @@ class ItrFromFunc:
             self._f = f
         else:
             raise TypeError(
-                "Argument f to %s should be callable, but f.__class__=%s" % (str(self.__class__), str(f.__class__)))
+                    "Argument f to %s should be callable, but f.__class__=%s" % (str(self.__class__), str(f.__class__)))
 
     def __iter__(self):
         return iter(self._f())
@@ -68,6 +68,7 @@ class EndQueue:
 class MapException:
     def __init__(self, exc_info):
         self.exc_info = exc_info
+
 
 class _IStream(collections.Iterable):
     def map(self, f):
@@ -250,7 +251,7 @@ class _IStream(collections.Iterable):
         (key, sub-iterator) grouped by each value of key(value).
         """
         return stream(
-            ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], slist(kv[1])))
+                ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], slist(kv[1])))
 
     def countByValue(self):
         return sdict(collections.Counter(self))
@@ -478,14 +479,28 @@ class _IStream(collections.Iterable):
         """
         return stream(ItrFromFunc(lambda: _IStream.__unique_generator(self, predicate)))
 
+    @staticmethod
+    def binaryToChunk(binaryData):
+        """
+        :param binaryData: binary data to transform into chunk with header
+        :type binaryData: str
+        :return: chunk of data with header
+        :rtype: str
+        """
+        l = len(binaryData)
+        p = struct.pack("<L", l)
+        assert len(p) == 4
+        return p + binaryData
+
     def dumpToPickle(self, fileStream):
         '''
         :param fileStream: should be binary output stream
         :type fileStream: file
         :return: Nothing
         '''
-        for el in self:
-            fileStream.write(_IStream._picklePack(el))
+
+        for el in self.map(pickle.dumps).map(stream.binaryToChunk):
+            fileStream.write(el)
 
     def dumpPickledToWriter(self, writer):
         '''
@@ -494,15 +509,11 @@ class _IStream(collections.Iterable):
         :return: Nothing
         '''
         for el in self:
-            writer(_IStream._picklePack(el))
+            writer(stream._picklePack(el))
 
     @staticmethod
     def _picklePack(el):
-        s = pickle.dumps(el, pickle.HIGHEST_PROTOCOL)
-        l = len(s)
-        p = struct.pack("<L", l)
-        assert len(p) == 4
-        return p + s
+        return stream.binaryToChunk(pickle.dumps(el, pickle.HIGHEST_PROTOCOL))
 
     def exceptIndexes(self, *indexes):
         """
@@ -546,9 +557,8 @@ class stream(_IStream):
             return object.__str__(self)
 
     @staticmethod
-    def __unpickleStreamGenerator(fs, format="<L", statHandler=None):
+    def __binaryChunksStreamGenerator(fs, format="<L", statHandler=None):
         """
-
         :param fs:
         :type fs: file
         :param format:
@@ -568,12 +578,24 @@ class stream(_IStream):
                 raise IOError("Wrong pickled file format")
             l = struct.unpack(format, s)[0]
             s = fs.read(l)
-            el = pickle.loads(s)
             if statHandler is not None:
                 count += 1
                 sz += 4 + l
                 statHandler((count, sz))
-            yield el
+            yield s
+
+    @staticmethod
+    def readFromBinaryChunkStream(readStream, format="<L", statHandler=None):
+        '''
+        :param file: should be path or binary file stream
+        :param statHandler: statistics handler, will be called before every yield with a tuple (n,size)
+        :type statHandler: callable
+        :type file: file | str
+        :rtype: stream[T]
+        '''
+        if isinstance(readStream, basestring):
+            readStream = openByExtension(readStream, mode='r', buffering=2 ** 12)
+        return stream(stream.__binaryChunksStreamGenerator(readStream, format, statHandler))
 
     @staticmethod
     def loadFromPickled(file, format="<L", statHandler=None):
@@ -584,9 +606,10 @@ class stream(_IStream):
         :type file: file | str
         :rtype: stream[T]
         '''
+
         if isinstance(file, basestring):
             file = openByExtension(file, mode='r', buffering=2 ** 12)
-        return stream(stream.__unpickleStreamGenerator(file, format, statHandler))
+        return stream.readFromBinaryChunkStream(file, format, statHandler).map(pickle.loads)
 
 
 class AbstractSynchronizedBufferedStream(stream):
