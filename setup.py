@@ -4,6 +4,7 @@
 # Purpose: 
 # Created: 12/1/2015
 import os
+import sys
 from os.path import join
 from shutil import copy
 
@@ -20,8 +21,10 @@ try:
 except os.error:
     pass
 
+pyMajorVersion = str(sys.version_info[0])
+
 for fname in py_modules:
-    copy(join(basedir, fname + '.py'), dest_package_dir)
+    copy(join(basedir, 'py' + pyMajorVersion, 'pyxtension', fname + '.py'), dest_package_dir)
 
 setup(name='pyxtension',
       version='1.0',
@@ -38,11 +41,9 @@ setup(name='pyxtension',
           "Programming Language :: Python :: 2.6",
           "Programming Language :: Python :: 2.7",
           "Programming Language :: Python :: 3",
-          "Programming Language :: Python :: 3.2",
-          "Programming Language :: Python :: 3.3",
-          "Programming Language :: Python :: 3.4",
           "Programming Language :: Python :: Implementation :: CPython",
           "Programming Language :: Python :: Implementation :: PyPy",
+          "Programming Language :: Python :: Implementation :: Jython",
       ),
       )
 

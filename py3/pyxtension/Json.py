@@ -9,7 +9,9 @@ Python module that gives you a dictionary whose values are both gettable and set
 import copy
 import json
 
-from streams import *
+from typing import MutableMapping
+
+from pyxtension.streams import *
 
 __author__ = 'ASU'
 supermethod = lambda self: super(self.__class__, self)
@@ -21,29 +23,33 @@ class JsonList(slist):
         if isinstance(j, dict):
             return Json(j)
         elif isinstance(j, (list, tuple)) and not isinstance(j, JsonList):
-            return JsonList(map(Json._toJ, j))
+            return JsonList(list(map(Json._toJ, j)))
         elif isinstance(j, stream):
             return JsonList(j.map(Json._toJ).toList())
         else:
             return j
-
+    
     def __init__(self, *args):
         slist.__init__(self, stream(*args).map(lambda j: JsonList.__decide(j)))
-
+    
     def toOrig(self):
         return [isinstance(t, (Json, JsonList)) and t.toOrig() or t for t in self]
-
+    
     def toString(self):
         return json.dumps(self)
 
 
-class Json(sdict):
-    FORBIDEN_METHODS = ('__methods__', '__members__')  # Introduced due to PyCharm debugging accessing these methods
+K = TypeVar('K')
+V = TypeVar('V')
 
+
+class Json(sdict, dict, MutableMapping[K, V]):
+    FORBIDEN_METHODS = ('__methods__', '__members__')  # Introduced due to PyCharm debugging accessing these methods
+    
     @classmethod
     def __myAttrs(cls):
         return set(dir(cls))
-
+    
     @staticmethod
     def load(fp, *args, **kwargs):
         """Deserialize ``fp`` (a ``.read()``-supporting file-like object containing
@@ -73,7 +79,7 @@ class Json(sdict):
         kwarg; otherwise ``JSONDecoder`` is used.
         """
         return Json.loads(fp.read(), *args, **kwargs)
-
+    
     @staticmethod
     def loads(*args, **kwargs):
         """Deserialize ``s`` (a ``str`` or ``unicode`` instance containing a JSON
@@ -122,13 +128,13 @@ class Json(sdict):
             return JsonList(d)
         else:
             raise NotImplementedError("Unknown JSON format: {}".format(d.__class__))
-
+    
     @staticmethod
     def fromString(s, *args, **kwargs):
         return Json.loads(s, *args, **kwargs)
-
+    
     __decide = lambda self, j: isinstance(j, dict) and Json(j) or (isinstance(j, list) and slist(j) or j)
-
+    
     @classmethod
     def _toJ(cls, j):
         if isinstance(j, Json):
@@ -141,9 +147,9 @@ class Json(sdict):
             return JsonList(j)
         else:
             return j
-
+    
     def __init__(self, *args, **kwargs):
-        if not kwargs and len(args) == 1 and isinstance(args[0], basestring):
+        if not kwargs and len(args) == 1 and isinstance(args[0], (str)):
             d = json.loads(args[0])
             assert isinstance(d, dict)
             sdict.__init__(self, d)
@@ -151,7 +157,7 @@ class Json(sdict):
             sdict.__init__(self, args)
         else:
             sdict.__init__(self, *args, **kwargs)
-
+    
     def __getitem__(self, name):
         """
         This is called when the Dict is accessed by []. E.g.
@@ -166,11 +172,11 @@ class Json(sdict):
                 sdict.__setitem__(self, name, j)
                 return j
             elif isinstance(d, list) and not isinstance(d, JsonList):
-                j = JsonList(d)                
+                j = JsonList(d)
                 sdict.__setitem__(self, name, j)
                 return j
             elif isinstance(d, set) and not isinstance(d, sset):
-                j = sset(d)                
+                j = sset(d)
                 sdict.__setitem__(self, name, j)
                 return j
             else:
@@ -179,45 +185,35 @@ class Json(sdict):
             j = Json()
             sdict.__setitem__(self, name, j)
             return j
-
+    
     def __getattr__(self, item):
         if item in self.FORBIDEN_METHODS:
             raise AttributeError("Forbidden methods access to %s. Introduced due to PyCharm debugging problem." % str(
                 self.FORBIDEN_METHODS))
-
+        
         return self.__getitem__(item)
-
+    
     def __setattr__(self, key, value):
         if key not in self.__myAttrs():
             self[key] = value
         else:
             raise AttributeError("'%s' object attribute '%s' is read-only" % (str(self.__class__), key))
-
+    
     def __iter__(self):
         return super(Json, self).__iter__()
-
-    def iteritems(self):
-        return stream(dict.iteritems(self)).map(lambda kv: (kv[0], Json._toJ(kv[1])))
-
-    def iterkeys(self):
-        return stream(dict.iterkeys(self))
-
-    def itervalues(self):
-        return stream(dict.itervalues(self)).map(Json._toJ)
-
-    def keys(self):
-        return slist(dict.keys(self))
-
-    def values(self):
-        return self.itervalues().toList()
-
+    
     def items(self):
-        return self.iteritems().toList()
-
+        return stream(dict.items(self)).map(lambda kv: (kv[0], Json._toJ(kv[1])))
+    
+    def keys(self):
+        return stream(dict.keys(self))
+    
+    def values(self):
+        return stream(dict.values(self)).map(Json._toJ)
+    
     def __str__(self):
-        return json.dumps(self.toOrig(), separators=(',', ':'), encoding='utf-8', default=lambda k: str(k),
-                          sort_keys=True)
-
+        return json.dumps(self.toOrig(), separators=(',', ':'), default=lambda k: str(k))
+    
     def dump(self, *args, **kwargs):
         """Serialize ``obj`` as a JSON formatted stream to ``fp`` (a
         ``.write()``-supporting file-like object).
@@ -227,7 +223,7 @@ class Json(sdict):
         will be skipped instead of raising a ``TypeError``.
 
         If ``ensure_ascii`` is true (the default), all non-ASCII characters in the
-        output are escaped with ``\uXXXX`` sequences, and the result is a ``str``
+        output are escaped with ``\\uXXXX`` sequences, and the result is a ``str``
         instance consisting of ASCII characters only.  If ``ensure_ascii`` is
         ``False``, some chunks written to ``fp`` may be ``unicode`` instances.
         This usually happens because the input contains unicode strings or the
@@ -268,7 +264,7 @@ class Json(sdict):
         the ``cls`` kwarg; otherwise ``JSONEncoder`` is used.
         """
         return json.dump(self.toOrig(), *args, **kwargs)
-
+    
     def dumps(self, *args, **kwargs):
         """Serialize ``self`` to a JSON formatted ``str``.
 
@@ -313,37 +309,37 @@ class Json(sdict):
 
         """
         return json.dumps(self.toOrig(), *args, **kwargs)
-
+    
     def toString(self):
         """
         :return: deterministic sorted output string, that can be compared
         :rtype: str
         """
         return str(self)
-
+    
     """To be removed and make Json serializable"""
-
+    
     def __eq__(self, y):
         return super(Json, self).__eq__(y)
-
-    def reduce(self, f, init):
+    
+    def __reduce__(self):
         return self.__reduce_ex__(2)
-
+    
     def __reduce_ex__(self, protocol):
         return str(self)
-
+    
     def copy(self):
         return Json(super(Json, self).copy())
-
+    
     def __deepcopy__(self, memo):
         return Json(copy.deepcopy(self.toOrig(), memo))
-
+    
     def __delattr__(self, name):
         if name in self:
             return supermethod(self).__delitem__(name)
         else:
             raise AttributeError("%s instance has no attribute %s" % (str(self.__class__), name))
-
+    
     def toOrig(self):
         """
         Converts Json to a native dict
@@ -351,17 +347,17 @@ class Json(sdict):
         :rtype: sdict
         """
         return sdict(
-            self.iteritems().
-                map(lambda kv: (kv[0], isinstance(kv[1], (Json, JsonList)) and kv[1].toOrig() or kv[1]))
+            self.items()
+                .map(lambda kv: (kv[0], isinstance(kv[1], (Json, JsonList)) and kv[1].toOrig() or kv[1]))
         )
 
 
 class FrozenJson(Json):
     def __init__(self, *args, **kwargs):
         super(FrozenJson, self).__init__(*args, **kwargs)
-
+    
     def __setattr__(self, key, value):
         raise TypeError("Can not update a FrozenJson instance by (key,value): ({},{})".format(key, value))
-
+    
     def __hash__(self):
         return hash(self.toString())

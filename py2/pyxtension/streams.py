@@ -27,7 +27,7 @@ from collections import defaultdict
 
 if sys.version_info[0] >= 3:
     xrange = range
-from fileutils import openByExtension
+from pyxtension.fileutils import openByExtension
 
 __author__ = 'ASU'
 
@@ -300,7 +300,7 @@ class _IStream(collections.Iterable):
         return res
 
     def toJson(self):
-        from Json import JsonList
+        from pyxtension.Json import JsonList
 
         return JsonList(self)
 
@@ -803,7 +803,7 @@ class sdict(dict, _IStream):
         return self
 
     def toJson(self):
-        from Json import Json
+        from pyxtension.Json import Json
         return Json(self)
 
 
