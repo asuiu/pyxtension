@@ -18,8 +18,8 @@ script:
   - "python run_tests.py"
   - "python install_test.py"
 #  - "python -m unittest tests.test_Json tests.test_Streams"
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; coverage run --branch --include=./py2/pyxtension/Json.py,./py2/pyxtension/streams.py --omit=./py2/pyxtension/tests/* run_tests.py; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; coverage run --branch --include=./py3/pyxtension/Json.py,./py3/pyxtension/streams.py --omit=./py3/pyxtension/tests/* run_tests.py; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then coverage run --branch --include=./py2/pyxtension/Json.py,./py2/pyxtension/streams.py --omit=./py2/pyxtension/tests/* run_tests.py; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then coverage run --branch --include=./py3/pyxtension/Json.py,./py3/pyxtension/streams.py --omit=./py3/pyxtension/tests/* run_tests.py; fi
 
 after_success:
   - coveralls
