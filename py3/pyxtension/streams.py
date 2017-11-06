@@ -72,7 +72,7 @@ T = TypeVar('T')
 
 
 class _IStream(Iterable[K], ABC):
-    def map(self, f: Callable[[K], V]) -> 'stream[K]':
+    def map(self, f: Callable[[K], V]) -> 'stream[V]':
         return stream(ItrFromFunc(lambda: map(f, self)))
     
     @staticmethod
