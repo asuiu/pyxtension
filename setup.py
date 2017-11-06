@@ -25,45 +25,32 @@ pyMajorVersion = str(sys.version_info[0])
 
 for fname in py_modules:
     copy(join(basedir, 'py' + pyMajorVersion, 'pyxtension', fname + '.py'), dest_package_dir)
+parameters = dict(name='pyxtension',
+                  version='1.1.01',
+                  description='Python Utilities',
+                  author='Andrei Suiu',
+                  author_email='andrei.suiu@gmail.com',
+                  url='https://github.com/asuiu/pyxtension',
+                  packages=['pyxtension'],
+                  classifiers=(
+                      #              "Development Status :: 5 - Production/Stable",
+                      #              "Intended Audience :: Developers",
+                      #              "License :: OSI Approved :: GNU GENERAL PUBLIC LICENSE",
+                      #              "Programming Language :: Python :: 2",
+                      #              "Programming Language :: Python :: 2.6",
+                      #              "Programming Language :: Python :: 2.7",
+                      #              "Programming Language :: Python :: Implementation :: CPython",
+                      #              "Programming Language :: Python :: Implementation :: PyPy",
+                  ))
 if pyMajorVersion == '2':
     import pip
+    
     requires = ['mock']
     for reqPackage in requires:
         pip.main(['install', reqPackage])
-    setup(name='pyxtension',
-          version='1.1',
-          description='Python Utilities',
-          author='Andrei Suiu',
-          author_email='andrei.suiu@gmail.com',
-          url='https://github.com/asuiu/pyxtension',
-          packages=['pyxtension'],
-          classifiers=(
-#              "Development Status :: 5 - Production/Stable",
-#              "Intended Audience :: Developers",
-#              "License :: OSI Approved :: GNU GENERAL PUBLIC LICENSE",
-#              "Programming Language :: Python :: 2",
-#              "Programming Language :: Python :: 2.6",
-#              "Programming Language :: Python :: 2.7",
-#              "Programming Language :: Python :: Implementation :: CPython",
-#              "Programming Language :: Python :: Implementation :: PyPy",
-          )
-          )
+    setup(**parameters)
 elif pyMajorVersion == '3':
-    setup(name='pyxtension',
-          version='1.0',
-          description='Python Utilities',
-          author='Andrei Suiu',
-          author_email='andrei.suiu@gmail.com',
-          url='https://github.com/asuiu/pyxtension',
-          packages=['pyxtension'],
-          classifiers=(
-              "Development Status :: 5 - Production/Stable",
-              "Intended Audience :: Developers",
-              "License :: OSI Approved :: GNU GENERAL PUBLIC LICENSE",
-              "Programming Language :: Python :: 3",
-              "Programming Language :: Python :: Implementation :: CPython",
-          ),
-          )
+    setup(**parameters)
 
 # clean-up
 for fname in os.listdir(dest_package_dir):
