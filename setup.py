@@ -31,22 +31,21 @@ if pyMajorVersion == '2':
     for reqPackage in requires:
         pip.main(['install', reqPackage])
     setup(name='pyxtension',
-          version='1.0',
+          version='1.1',
           description='Python Utilities',
           author='Andrei Suiu',
           author_email='andrei.suiu@gmail.com',
           url='https://github.com/asuiu/pyxtension',
           packages=['pyxtension'],
           classifiers=(
-              "Development Status :: 5 - Production/Stable",
-              "Intended Audience :: Developers",
-              "License :: OSI Approved :: GNU GENERAL PUBLIC LICENSE",
-              "Programming Language :: Python :: 2",
-              "Programming Language :: Python :: 2.6",
-              "Programming Language :: Python :: 2.7",
-              "Programming Language :: Python :: Implementation :: CPython",
-              "Programming Language :: Python :: Implementation :: PyPy",
-              "Programming Language :: Python :: Implementation :: Jython",
+#              "Development Status :: 5 - Production/Stable",
+#              "Intended Audience :: Developers",
+#              "License :: OSI Approved :: GNU GENERAL PUBLIC LICENSE",
+#              "Programming Language :: Python :: 2",
+#              "Programming Language :: Python :: 2.6",
+#              "Programming Language :: Python :: 2.7",
+#              "Programming Language :: Python :: Implementation :: CPython",
+#              "Programming Language :: Python :: Implementation :: PyPy",
           )
           )
 elif pyMajorVersion == '3':
@@ -64,7 +63,6 @@ elif pyMajorVersion == '3':
               "Programming Language :: Python :: 3",
               "Programming Language :: Python :: Implementation :: CPython",
           ),
-          install_requires=[],
           )
 
 # clean-up
