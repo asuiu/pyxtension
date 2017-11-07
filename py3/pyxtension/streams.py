@@ -17,7 +17,7 @@ from itertools import groupby
 from operator import itemgetter
 from queue import Queue
 from typing import Optional, Union, Callable, TypeVar, Iterable, Iterator, Tuple, BinaryIO, List, Mapping, MutableSet, \
-    Dict
+    Dict, Generator, overload
 
 ifilter = filter
 imap = map
@@ -27,7 +27,11 @@ from pyxtension.fileutils import openByExtension
 
 __author__ = 'ASU'
 
-_IDENTITY_FUNC = lambda _: _
+K = TypeVar('K')
+V = TypeVar('V')
+T = TypeVar('T')
+
+_IDENTITY_FUNC: Callable[[T], T] = lambda _: _
 
 
 class CallableGeneratorContainer:
@@ -66,9 +70,6 @@ class MapException:
         self.exc_info = exc_info
 
 
-K = TypeVar('K')
-V = TypeVar('V')
-T = TypeVar('T')
 
 
 class _IStream(Iterable[K], ABC):
@@ -146,12 +147,12 @@ class _IStream(Iterable[K], ABC):
             except StopIteration:
                 hasNext = False
         return stream(_IStream.__fastmap_generator(itr, qin, qout, threadPool))
-    
-    def enumerate(self) -> 'stream[K]':
+
+    def enumerate(self) -> 'stream[Tuple[int,K]]':
         return stream(zip(range(0, sys.maxsize), self))
     
     @classmethod
-    def __flatMapGenerator(cls, itr, f):
+    def __flatMapGenerator(cls, itr: Iterable[V], f: Callable[[V], Iterable[T]]) -> Generator[T]:
         for i in itr:
             for j in f(i):
                 yield j
@@ -206,14 +207,12 @@ class _IStream(Iterable[K], ABC):
         """
         return self.map(itemgetter(1))
     
-    def groupBy(self, keyfunc=_IDENTITY_FUNC):
+    def groupBy(self, keyfunc: Callable[[K], T]=_IDENTITY_FUNC)-> 'stream[Tuple[T,stream[K]]]':
         """
         groupBy([keyfunc]) -> Make an iterator that returns consecutive keys and groups from the iterable.
         The iterable needs not to be sorted on the same key function, but the keyfunction need to return hasable objects.
         :param keyfunc: [Optional] The key is a function computing a key value for each element.
-        :type keyfunc: (T) -> (V)
         :return: (key, sub-iterator) grouped by each value of key(value).
-        :rtype: stream[ ( V, slist[T] ) ]
         """
         # return stream(
         # 	ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], stream(kv[1])))
@@ -223,7 +222,7 @@ class _IStream(Iterable[K], ABC):
         ##for
         return stream(iter(h.items()))
     
-    def groupByToList(self, keyfunc):
+    def groupByToList(self, keyfunc:Callable[[K],T]=_IDENTITY_FUNC)->'stream[Tuple[T,slist[K]]]':
         """
         groupBy(keyfunc]) -> create an iterator which returns
         (key, sub-iterator) grouped by each value of key(value).
@@ -231,13 +230,33 @@ class _IStream(Iterable[K], ABC):
         return stream(
             ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], slist(kv[1])))
     
-    def countByValue(self):
+    def countByValue(self)->'sdict[K,int]':
         return sdict(collections.Counter(self))
     
-    def distinct(self):
+    def distinct(self)->'stream[K]':
         return self.unique()
-    
-    def reduce(self, f:Callable[[Union[K,V],K],T], init:Optional[Union[K,V]]=None)->'T':
+
+    @overload
+    def reduce(self, f: Callable[[K, K], K], init: Optional[K] = None) -> K:
+        ...
+
+    @overload
+    def reduce(self, f: Callable[[T, K], T], init: T = None) -> T:
+        ...
+
+    @overload
+    def reduce(self, f: Callable[[Union[K, T], K], T], init: Optional[T] = None) -> T:
+        ...
+
+    @overload
+    def reduce(self, f: Callable[[Union[K, T], K], T], init: Optional[K] = None) -> T:
+        ...
+
+    @overload
+    def reduce(self, f: Callable[[T, K], T], init: T = None) -> T:
+        ...
+
+    def reduce(self, f, init=None):
         if init is None:
             return reduce(f, self)
         else:
@@ -247,10 +266,6 @@ class _IStream(Iterable[K], ABC):
         return sset(self)
     
     def toList(self) -> 'slist[K]':
-        '''
-        :return:
-        :rtype: slist
-        '''
         return slist(self)
     
     def sorted(self, key=None, reverse=False):
@@ -276,8 +291,16 @@ class _IStream(Iterable[K], ABC):
     def toJson(self) -> 'JsonList':
         from pyxtension.Json import JsonList
         return JsonList(self)
-    
-    def __getitem__(self, i: Union[slice, int]) -> 'Union[K, stream[K]]':
+
+    @overload
+    def __getitem__(self, i: slice) -> 'stream[K]':
+        ...
+
+    @overload
+    def __getitem__(self, i: int) -> K:
+        ...
+
+    def __getitem__(self, i: Union[slice, int]):
         if isinstance(i, slice):
             return self.__getslice(i.start, i.stop, i.step)
         else:
@@ -613,15 +636,11 @@ class AbstractSynchronizedBufferedStream(stream):
 
 
 class SynchronizedBufferedStream(AbstractSynchronizedBufferedStream):
-    def __init__(self, iteratorOverBuffers):
-        """
-        :param bufferGetter: iterator over slist objects
-        :type bufferGetter: stream[slist[T]]
-        """
+    def __init__(self, iteratorOverBuffers: 'Iterator[slist[T]]'):
         self.__iteratorOverBuffers = iter(iteratorOverBuffers)
         super(SynchronizedBufferedStream, self).__init__()
     
-    def _getNextBuffer(self):
+    def _getNextBuffer(self) -> slist[T]:
         try:
             return next(self.__iteratorOverBuffers)
         except StopIteration:
@@ -638,15 +657,15 @@ class sset(set, MutableSet[K], _IStream):
     # Below methods enable chaining and lambda using
     def update(self, *args, **kwargs) -> 'sset[K]':
         # ToDo: Add option to update with iterables, as set.update supports only other set
-        super(sset, self).update(*args, **kwargs)
+        set.update(self, *args, **kwargs)
         return self
     
     def intersection_update(self, *args, **kwargs) -> 'sset[K]':
-        super(sset, self).intersection_update(*args, **kwargs)
+        set.intersection_update(self, *args, **kwargs)
         return self
     
     def difference_update(self, *args, **kwargs) -> 'sset[K]':
-        super(sset, self).difference_update(*args, **kwargs)
+        set.difference_update(self, *args, **kwargs)
         return self
     
     def symmetric_difference_update(self, *args, **kwargs) -> 'sset[K]':
@@ -654,7 +673,7 @@ class sset(set, MutableSet[K], _IStream):
         return self
     
     def clear(self, *args, **kwargs) -> 'sset[K]':
-        super(sset, self).clear(*args, **kwargs)
+        set.clear(self, *args, **kwargs)
         return self
     
     def remove(self, *args, **kwargs) -> 'sset[K]':
@@ -716,7 +735,7 @@ class slist(_IStream, List[K]):
         return stream(ItrFromFunc(lambda: indexIgnorer(indexSet, self)))
 
 
-class sdict(Dict[K, V], _IStream):
+class sdict(Dict[K, V], dict, _IStream):
     def __init__(self, *args, **kwrds):
         dict.__init__(self, *args, **kwrds)
     
@@ -733,7 +752,7 @@ class sdict(Dict[K, V], _IStream):
         return stream(dict.items(self))
     
     def update(self, other=None, **kwargs) -> 'sdict[K,V]':
-        super(sdict, self).update(other, **kwargs)
+        dict.update(self, other, **kwargs)
         return self
     
     def toJson(self) -> 'sdict[K,V]':
