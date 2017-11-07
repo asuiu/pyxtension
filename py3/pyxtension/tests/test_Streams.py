@@ -7,7 +7,6 @@ from io import BytesIO
 from unittest.mock import MagicMock
 
 from pyxtension.Json import JsonList, Json
-
 from pyxtension.streams import stream, slist, sset, sdict, ItrFromFunc, defaultstreamdict
 
 ifilter = filter
@@ -22,7 +21,22 @@ __author__ = 'ASU'
 class StreamTestCase(unittest.TestCase):
     def setUp(self):
         self.s = lambda: stream((1, 2, 3))
-    
+
+    # ToDo:Implement
+    @unittest.skip("ToDo:implement")
+    def test_fastFlatMap_reiteration(self):
+        l = stream(ItrFromFunc(lambda: (xrange(i) for i in xrange(5)))).fastFlatMap()
+        self.assertEqual(l.toList(), [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])
+        self.assertEqual(l.toList(),
+                         [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])  # second time to assert the regeneration of generator
+
+    # ToDo:Implement
+    @unittest.skip("ToDo:implement")
+    def test_fastmap_reiteration(self):
+        l = stream(ItrFromFunc(lambda: (xrange(i) for i in xrange(5)))).fastmap(len)
+        self.assertEqual(l.toList(), [0, 1, 2, 3, 4])
+        self.assertEqual(l.toList(), [0, 1, 2, 3, 4])  # second time to assert the regeneration of generator
+
     def testStream(self):
         s = self.s
         self.assertEqual(list(ifilter(lambda i: i % 2 == 0, s())), [2])
@@ -162,11 +176,6 @@ class StreamTestCase(unittest.TestCase):
         s = stream(({1: 2, 3: 4}, {5: 6, 7: 8}))
         self.assertEqual(s.fastFlatMap(dict.items).toSet(), set(((1, 2), (5, 6), (3, 4), (7, 8))))
 
-    def test_fastFlatMap_reiteration(self):
-        l = stream(ItrFromFunc(lambda: (xrange(i) for i in xrange(5)))).fastFlatMap()
-        self.assertEqual(l.toList(), [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])
-        self.assertEqual(l.toList(),
-                         [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])  # second time to assert the regeneration of generator
 
     def test_fastFlatMap_defaultIdentityFunction(self):
         l = slist(({1: 2, 3: 4}, {5: 6, 7: 8}))
