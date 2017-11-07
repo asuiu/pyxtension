@@ -36,7 +36,7 @@ From now on, you may simply write the following three lines:
 ```
 ### streams.py
 #### stream
-`streams` subclasses `collections.Iterable`. It's the same Python iterable, but with more added methods.
+`stream` subclasses `collections.Iterable`. It's the same Python iterable, but with more added methods.
 Used to create stream processing pipelines, similar to those used in [Scala](http://www.scala-lang.org/) and [MapReduce](https://en.wikipedia.org/wiki/MapReduce) programming model.
 Those who used [Apache Spark](http://spark.apache.org/) [RDD](http://spark.apache.org/docs/latest/programming-guide.html#rdd-operations) functions will find this model of processing very easy to use.
 
