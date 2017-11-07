@@ -12,6 +12,8 @@ __author__ = 'ASU'
 
 from distutils.core import setup
 
+# from setuptools import setup
+
 py_modules = ['Json', 'streams', 'racelib', 'fileutils', '__init__']
 
 basedir = os.path.dirname(__file__)
@@ -26,22 +28,22 @@ pyMajorVersion = str(sys.version_info[0])
 for fname in py_modules:
     copy(join(basedir, 'py' + pyMajorVersion, 'pyxtension', fname + '.py'), dest_package_dir)
 parameters = dict(name='pyxtension',
-                  version='1.1.01',
-                  description='Python Utilities',
+                  version='1.1.4',
+                  description='Extension library for Python',
                   author='Andrei Suiu',
                   author_email='andrei.suiu@gmail.com',
                   url='https://github.com/asuiu/pyxtension',
                   packages=['pyxtension'],
-                  classifiers=(
-                      #              "Development Status :: 5 - Production/Stable",
-                      #              "Intended Audience :: Developers",
-                      #              "License :: OSI Approved :: GNU GENERAL PUBLIC LICENSE",
-                      #              "Programming Language :: Python :: 2",
-                      #              "Programming Language :: Python :: 2.6",
-                      #              "Programming Language :: Python :: 2.7",
-                      #              "Programming Language :: Python :: Implementation :: CPython",
-                      #              "Programming Language :: Python :: Implementation :: PyPy",
-                  ))
+                  classifiers=[
+                      "Development Status :: 5 - Production/Stable",
+                      "Intended Audience :: Developers",
+                      "Programming Language :: Python :: 2",
+                      "Programming Language :: Python :: 2.6",
+                      "Programming Language :: Python :: 2.7",
+                      "Programming Language :: Python :: 3",
+                      "Programming Language :: Python :: 3.6",
+                      "Programming Language :: Python :: Implementation :: CPython",
+                      "Programming Language :: Python :: Implementation :: PyPy", ])
 if pyMajorVersion == '2':
     import pip
     

@@ -77,7 +77,7 @@ class _IStream(Iterable[K], ABC):
         return stream(ItrFromFunc(lambda: map(f, self)))
     
     @staticmethod
-    def __map_thread(f, qin, qout):
+    def __fastmap_thread(f, qin, qout):
         while True:
             el = qin.get()
             if isinstance(el, EndQueue):
@@ -88,9 +88,24 @@ class _IStream(Iterable[K], ABC):
                 qout.put(newEl)
             except:
                 qout.put(MapException(sys.exc_info()))
-    
+
     @staticmethod
-    def __fastmap_generator(itr, qin, qout, threadPool):
+    def __fastFlatMap_thread(f, qin, qout):
+        while True:
+            itr = qin.get()
+            if isinstance(itr, EndQueue):
+                qin.put(itr)
+                qout.put(EndQueue())
+                return
+            try:
+                newItr = f(itr)
+                for el in newItr:
+                    qout.put(el)
+            except:
+                qout.put(MapException(sys.exc_info()))
+
+    @staticmethod
+    def __fastmap_generator(itr, qin: Queue, qout: Queue, threadPool: List[threading.Thread]):
         while 1:
             try:
                 el = next(itr)
@@ -110,7 +125,40 @@ class _IStream(Iterable[K], ABC):
                 if isinstance(newEl, MapException):
                     raise newEl.exc_info[0](newEl.exc_info[1]).with_traceback(newEl.exc_info[2])
                 yield newEl
-    
+
+    @staticmethod
+    def __fastFlatMap_input_thread(itr: Iterator[K], qin: Queue):
+        while 1:
+            try:
+                el = next(itr)
+            except StopIteration:
+                qin.put(EndQueue())
+                return
+            else:
+                qin.put(el)
+
+    @staticmethod
+    def __fastFlatMap_generator(qout: Queue, threadPool: List[threading.Thread],
+                                inputThread: threading.Thread):
+        qout_counter = 0
+        while qout_counter < len(threadPool):
+            newEl = qout.get()
+            if isinstance(newEl, MapException):
+                raise newEl.exc_info[0](newEl.exc_info[1]).with_traceback(newEl.exc_info[2])
+            if isinstance(newEl, EndQueue):
+                qout_counter += 1
+                if qout_counter >= len(threadPool):
+                    inputThread.join()
+                    for t in threadPool:
+                        t.join()
+                    while not qout.empty():
+                        newEl = qout.get()
+                        if isinstance(newEl, MapException):
+                            raise newEl.exc_info[0](newEl.exc_info[1]).with_traceback(newEl.exc_info[2])
+                        yield newEl
+            else:
+                yield newEl
+
     @staticmethod
     def __unique_generator(itr, f):
         st = set()
@@ -119,8 +167,8 @@ class _IStream(Iterable[K], ABC):
             if m_el not in st:
                 st.add(m_el)
                 yield el
-    
-    def fastmap(self, f: Callable[[K], V], poolSize: int = 16) -> 'stream[V]':
+
+    def fastmap(self, f: Callable[[K], V], poolSize: int = 16, bufferSize: Optional[int] = None) -> 'stream[V]':
         """
         Parallel unordered map using multithreaded pool.
         It spawns at most poolSize threads and applies the f function.
@@ -128,18 +176,23 @@ class _IStream(Iterable[K], ABC):
         It's most usefull for I/O or CPU intensive consuming functions.
         :param poolSize: number of threads to spawn
         """
-        assert poolSize > 0
-        assert poolSize < 2 ** 12
-        Q_SZ = poolSize * 4
-        qin = Queue(Q_SZ)
-        qout = Queue(Q_SZ)
-        threadPool = [threading.Thread(target=_IStream.__map_thread, args=(f, qin, qout)) for i in range(poolSize)]
+        if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:
+            raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+        elif poolSize == 1:
+            return self.map(f)
+        if bufferSize is None:
+            bufferSize = poolSize
+        if not isinstance(bufferSize, int) or bufferSize <= 0 or bufferSize > 2 ** 12:
+            raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+        qin = Queue(bufferSize)
+        qout = Queue(bufferSize)
+        threadPool = [threading.Thread(target=_IStream.__fastmap_thread, args=(f, qin, qout)) for i in range(poolSize)]
         for t in threadPool:
             t.start()
         i = 0
         itr = iter(self)
         hasNext = True
-        while i < Q_SZ and hasNext:
+        while i < bufferSize and hasNext:
             try:
                 el = next(itr)
                 i += 1
@@ -148,11 +201,41 @@ class _IStream(Iterable[K], ABC):
                 hasNext = False
         return stream(_IStream.__fastmap_generator(itr, qin, qout, threadPool))
 
+    def fastFlatMap(self, predicate: Callable[[K], Iterable[V]] = _IDENTITY_FUNC, poolSize: int = 16,
+                    bufferSize: Optional[int] = None) -> 'stream[V]':
+        if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:
+            raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+        elif poolSize == 1:
+            return self.flatMap(predicate)
+        if bufferSize is None:
+            bufferSize = poolSize
+        if not isinstance(bufferSize, int) or bufferSize <= 0 or bufferSize > 2 ** 12:
+            raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+        qin = Queue(bufferSize)
+        qout = Queue(bufferSize * 2)
+        threadPool = [threading.Thread(target=_IStream.__fastFlatMap_thread, args=(predicate, qin, qout)) for i in
+                      range(poolSize)]
+        for t in threadPool:
+            t.start()
+        i = 0
+        itr = iter(self)
+        hasNext = True
+        while i < bufferSize and hasNext:
+            try:
+                el = next(itr)
+                i += 1
+                qin.put(el)
+            except StopIteration:
+                hasNext = False
+        inputThread = threading.Thread(target=_IStream.__fastFlatMap_input_thread, args=(itr, qin))
+        inputThread.start()
+        return stream(_IStream.__fastFlatMap_generator(qout, threadPool, inputThread))
+
     def enumerate(self) -> 'stream[Tuple[int,K]]':
         return stream(zip(range(0, sys.maxsize), self))
     
     @classmethod
-    def __flatMapGenerator(cls, itr: Iterable[V], f: Callable[[V], Iterable[T]]) -> Generator[T]:
+    def __flatMapGenerator(cls, itr: Iterable[V], f: Callable[[V], Iterable[T]]) -> Generator[T, None, None]:
         for i in itr:
             for j in f(i):
                 yield j
@@ -639,8 +722,8 @@ class SynchronizedBufferedStream(AbstractSynchronizedBufferedStream):
     def __init__(self, iteratorOverBuffers: 'Iterator[slist[T]]'):
         self.__iteratorOverBuffers = iter(iteratorOverBuffers)
         super(SynchronizedBufferedStream, self).__init__()
-    
-    def _getNextBuffer(self) -> slist[T]:
+
+    def _getNextBuffer(self) -> 'slist[T]':
         try:
             return next(self.__iteratorOverBuffers)
         except StopIteration:
