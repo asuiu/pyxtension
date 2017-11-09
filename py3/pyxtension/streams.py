@@ -16,6 +16,7 @@ from functools import reduce
 from itertools import groupby
 from operator import itemgetter
 from queue import Queue
+from types import GeneratorType
 from typing import Optional, Union, Callable, TypeVar, Iterable, Iterator, Tuple, BinaryIO, List, Mapping, MutableSet, \
     Dict, Generator, overload
 
@@ -104,27 +105,37 @@ class _IStream(Iterable[K], ABC):
             except:
                 qout.put(MapException(sys.exc_info()))
 
+    # ToDo: add fix for generator close to Python 2.x
     @staticmethod
     def __fastmap_generator(itr, qin: Queue, qout: Queue, threadPool: List[threading.Thread]):
-        while 1:
-            try:
-                el = next(itr)
-            except StopIteration:
-                qin.put(EndQueue())
-                for t in threadPool:
-                    t.join()
-                while not qout.empty():
+        try:
+            while 1:
+                try:
+                    el = next(itr)
+                except StopIteration:
+                    qin.put(EndQueue())
+                    for t in threadPool:
+                        t.join()
+                    while not qout.empty():
+                        newEl = qout.get()
+                        if isinstance(newEl, MapException):
+                            raise newEl.exc_info[0](newEl.exc_info[1]).with_traceback(newEl.exc_info[2])
+                        yield newEl
+                    break
+                else:
+                    qin.put(el)
                     newEl = qout.get()
                     if isinstance(newEl, MapException):
                         raise newEl.exc_info[0](newEl.exc_info[1]).with_traceback(newEl.exc_info[2])
                     yield newEl
-                break
-            else:
-                qin.put(el)
-                newEl = qout.get()
-                if isinstance(newEl, MapException):
-                    raise newEl.exc_info[0](newEl.exc_info[1]).with_traceback(newEl.exc_info[2])
-                yield newEl
+        finally:
+            while not qin.empty():
+                qin.get()
+            qin.put(EndQueue())
+            while not qout.empty() or not qout.empty():
+                qout.get()
+            for t in threadPool:
+                t.join()
 
     @staticmethod
     def __fastFlatMap_input_thread(itr: Iterator[K], qin: Queue):
@@ -185,7 +196,7 @@ class _IStream(Iterable[K], ABC):
         if not isinstance(bufferSize, int) or bufferSize <= 0 or bufferSize > 2 ** 12:
             raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
         qin = Queue(bufferSize)
-        qout = Queue(bufferSize)
+        qout = Queue(max(bufferSize, poolSize + 1))  # max() is needed to not block when exiting
         threadPool = [threading.Thread(target=_IStream.__fastmap_thread, args=(f, qin, qout)) for i in range(poolSize)]
         for t in threadPool:
             t.start()
@@ -201,6 +212,7 @@ class _IStream(Iterable[K], ABC):
                 hasNext = False
         return stream(_IStream.__fastmap_generator(itr, qin, qout, threadPool))
 
+    # ToDo - add fastFlatMap to Python 2.x version
     def fastFlatMap(self, predicate: Callable[[K], Iterable[V]] = _IDENTITY_FUNC, poolSize: int = 16,
                     bufferSize: Optional[int] = None) -> 'stream[V]':
         if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:
@@ -393,11 +405,11 @@ class _IStream(Iterable[K], ABC):
                 next(itr)
                 tk += 1
             return next(itr)
-    
+
     def __getslice(self, start: Optional[int] = None,
                    stop: Optional[int] = None,
                    step: Optional[int] = None) -> 'stream[K]':
-        
+        # ToDo:fix this for cases where self._itr is generator from fastmap(), so have to be closed()
         return stream(ItrFromFunc(lambda: itertools.islice(self, start, stop, step)))
     
     def __add__(self, other) -> 'stream[K]':
@@ -452,10 +464,46 @@ class _IStream(Iterable[K], ABC):
     
     def mkString(self, c) -> str:
         return self.join(c)
+
+    # ToDo - add this fix to Python 2.7
+    def take(self, n: int) -> 'stream[K]':
+        def gen(other_gen: GeneratorType, n):
+            count = 0
+            while count < n:
+                if count < n:
+                    try:
+                        el = next(other_gen)
+                        count += 1
+                        yield el
+                    except StopIteration:
+                        break
+            other_gen.close()
     
-    def take(self, n) -> 'stream[K]':
-        return self[:n]
+        if isinstance(self._itr, GeneratorType):
+            return stream(gen(self._itr, n))
+        else:
+            return self[:n]
+
+    # ToDo: add tests for takeWhile
+    def takeWhile(self, predicate: Callable[[K], bool]) -> 'stream[K]':
+        def gen(other_gen: Union[GeneratorType, Iterable[K]], pred: Callable[[K], bool]):
+            isGen = True
+            if not isinstance(other_gen, GeneratorType):
+                isGen = False
+                other_gen = iter(other_gen)
+            while True:
+                try:
+                    el = next(other_gen)
+                    if pred(el):
+                        yield el
+                    else:
+                        break
+                except StopIteration:
+                    break
+            if isGen: other_gen.close()
     
+        return stream(gen(self._itr, predicate))
+
     def head(self) -> K:
         return next(iter(self))
     

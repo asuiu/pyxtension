@@ -290,7 +290,17 @@ class StreamTestCase(unittest.TestCase):
         res = s.fastmap(lambda x: x, poolSize=4).toSet()
         expected = set([None])
         self.assertSetEqual(res, expected)
-    
+
+    def test_fastmap_take_less(self):
+        arr = []
+        def m(i):
+            arr.append(i)
+            return i
+        s = stream(range(100)).map(m).fastmap(lambda x: x, poolSize=4,bufferSize=5).take(20)
+        res = s.toList()
+        self.assertLessEqual(len(arr),30)
+        self.assertEqual(len(res),20)
+
     def test_fastmap_raises_exception(self):
         s = stream([None])
         with self.assertRaises(TypeError):
