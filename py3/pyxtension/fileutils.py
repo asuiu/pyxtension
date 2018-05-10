@@ -2,13 +2,19 @@
 # coding:utf-8
 # Author: ASU --<andrei.suiu@gmail.com>
 # Purpose: utility library
-
+import gzip
+import io
 from bz2 import BZ2File
 from gzip import GzipFile
 
 __author__ = 'ASU'
 
 
+def linereader(f):
+    br = io.BufferedReader(f)
+    for line in br:
+        yield line.decode()
+        
 def openByExtension(filename, mode='r', buffering=-1, compresslevel=9):
     """
     :param filename: path to filename
@@ -30,7 +36,7 @@ def openByExtension(filename, mode='r', buffering=-1, compresslevel=9):
     bText = 't' in mode
 
     if filename.endswith('.gz'):
-        return GzipFile(filename, tm[m], compresslevel=compresslevel)
+        return gzip.open(filename, tm[m], compresslevel=compresslevel)
     elif filename.endswith('.bz2'):
         mode = tm[m]
         if bText: mode += 'U'

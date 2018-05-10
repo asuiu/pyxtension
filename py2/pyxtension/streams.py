@@ -34,31 +34,30 @@ __author__ = 'ASU'
 _IDENTITY_FUNC = lambda _: _
 
 
-class CallableGeneratorContainer:
-    def __init__(self, iterableFunctions):
-        self._ifs = iterableFunctions
-
-    def __call__(self):
-        return self.__class__.iteratorJoiner(self._ifs)
-
-    @classmethod
-    def iteratorJoiner(cls, itrIterables):
-        for i in itrIterables:
-            # itr = iter(i)
-            for obj in i:
-                yield obj
-
-
-class ItrFromFunc:
+class ItrFromFunc():
     def __init__(self, f):
         if callable(f):
             self._f = f
         else:
             raise TypeError(
-                    "Argument f to %s should be callable, but f.__class__=%s" % (str(self.__class__), str(f.__class__)))
-
+                "Argument f to %s should be callable, but f.__class__=%s" % (str(self.__class__), str(f.__class__)))
+    
     def __iter__(self):
         return iter(self._f())
+
+
+class CallableGeneratorContainer():
+    def __init__(self, iterableFunctions):
+        self._ifs = iterableFunctions
+    
+    def __call__(self):
+        return iteratorJoiner(self._ifs)
+
+
+def iteratorJoiner(itrIterables):
+    for i in itrIterables:
+        for obj in i:
+            yield obj
 
 
 class EndQueue:
@@ -251,8 +250,8 @@ class _IStream(collections.Iterable):
         (key, sub-iterator) grouped by each value of key(value).
         """
         return stream(
-                ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], slist(kv[1])))
-
+            ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], slist(kv[1])))
+    
     def countByValue(self):
         return sdict(collections.Counter(self))
 
@@ -715,9 +714,13 @@ class sset(set, _IStream):
 
 
 class slist(list, _IStream):
+    @property
+    def _itr(self):
+        return ItrFromFunc(lambda: self)
+    
     def __init__(self, *args, **kwrds):
         list.__init__(self, *args, **kwrds)
-
+    
     def __getslice__(self, i, j):
         def gs(strm):
             itr = iter(strm)
@@ -730,7 +733,7 @@ class slist(list, _IStream):
                 tk += 1
 
         return slist(ItrFromFunc(lambda: gs(self)))
-
+    
     def extend(self, iterable):
         '''
         :param iterable:
@@ -740,19 +743,19 @@ class slist(list, _IStream):
         '''
         list.extend(self, iterable)
         return self
-
+    
     def append(self, x):
         list.append(self, x)
         return self
-
+    
     def remove(self, x):
         list.remove(self, x)
         return self
-
+    
     def insert(self, i, x):
         list.insert(self, i, x)
         return self
-
+    
     def exceptIndexes(self, *indexes):
         """
         Supports negative indexes
@@ -771,6 +774,15 @@ class slist(list, _IStream):
         sz = self.size()
         indexSet = stream(indexes).map(lambda i: i if i >= 0 else i + sz).toSet()
         return stream(ItrFromFunc(lambda: indexIgnorer(indexSet, self)))
+    
+    def __iadd__(self, x):
+        return list.__iadd__(self, x)
+
+    def __add__(self, other):
+        return _IStream.__add__(self, other)
+    
+    def __getitem__(self, item):
+        return list.__getitem__(self, item)
 
 
 class sdict(dict, _IStream):

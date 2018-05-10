@@ -83,6 +83,21 @@ class StreamTestCase(unittest.TestCase):
         s = slist(l)
         self.assertEqual(repr(s), repr(l))
     
+    def test_slist_add(self):
+        l1 = slist([1, 2])
+        l2 = slist([3, 4])
+        l3 = (l1 + l2)
+        self.assertIsInstance(l3, stream)
+        self.assertNotIsInstance(l3, slist)
+        self.assertListEqual(l3.toList(), [1, 2, 3, 4])
+    
+    def test_slist_iadd(self):
+        l1 = slist([1, 2])
+        l2 = slist([3, 4])
+        l1 += l2
+        self.assertIsInstance(l1, slist)
+        self.assertListEqual(l1.toList(), [1, 2, 3, 4])
+    
     def testStreamToJson(self):
         j = stream((("a", 2), (3, 4))).toJson()
         self.assertIsInstance(j, JsonList)
@@ -108,6 +123,14 @@ class StreamTestCase(unittest.TestCase):
     def test_sdict(self):
         d = sdict({1: 2, 3: 4})
         self.assertListEqual(d.items().map(lambda t: t).toList(), [(1, 2), (3, 4)])
+    
+    def test_sdict_copy(self):
+        d = sdict({1: 2, 3: 4})
+        copy = d.copy()
+        self.assertIsInstance(copy, sdict)
+        self.assertSetEqual(set(d.items()), set(copy.items()))
+        d[1] = 3
+        self.assertEqual(copy[1], 2)
     
     def testStreamsFromGenerator(self):
         sg = stream(ItrFromFunc(lambda: (i for i in range(4))))

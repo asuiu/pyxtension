@@ -72,6 +72,22 @@ class StreamTestCase(unittest.TestCase):
         s = slist(l)
         self.assertEquals(repr(s), repr(l))
 
+    def test_slist_add(self):
+        l1 = slist([1, 2])
+        l2 = slist([3, 4])
+        l3 = (l1 + l2)
+        self.assertIsInstance(l3, stream)
+        self.assertNotIsInstance(l3, slist)
+        self.assertNotIsInstance(l3, list)
+        self.assertListEqual(l3.toList(), [1, 2, 3, 4])
+
+    def test_slist_iadd(self):
+        l1 = slist([1, 2])
+        l2 = slist([3, 4])
+        l1 += l2
+        self.assertIsInstance(l1, slist)
+        self.assertListEqual(l1.toList(), [1, 2, 3, 4])
+
     def testStreamToJson(self):
         from pyxtension.Json import JsonList
 

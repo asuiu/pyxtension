@@ -18,7 +18,7 @@ from operator import itemgetter
 from queue import Queue
 from types import GeneratorType
 from typing import Optional, Union, Callable, TypeVar, Iterable, Iterator, Tuple, BinaryIO, List, Mapping, MutableSet, \
-    Dict, Generator, overload
+    Dict, Generator, overload, Generic
 
 ifilter = filter
 imap = map
@@ -31,35 +31,35 @@ __author__ = 'ASU'
 K = TypeVar('K')
 V = TypeVar('V')
 T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
 
 _IDENTITY_FUNC: Callable[[T], T] = lambda _: _
 
 
-class CallableGeneratorContainer:
-    def __init__(self, iterableFunctions):
-        self._ifs = iterableFunctions
-    
-    def __call__(self):
-        return self.__class__.iteratorJoiner(self._ifs)
-    
-    @classmethod
-    def iteratorJoiner(cls, itrIterables):
-        for i in itrIterables:
-            # itr = iter(i)
-            for obj in i:
-                yield obj
-
-
-class ItrFromFunc:
-    def __init__(self, f):
+class ItrFromFunc(Iterable[K]):
+    def __init__(self, f: Callable[[], Iterable[K]]):
         if callable(f):
             self._f = f
         else:
             raise TypeError(
                 "Argument f to %s should be callable, but f.__class__=%s" % (str(self.__class__), str(f.__class__)))
     
-    def __iter__(self):
+    def __iter__(self) -> Iterator[T_co]:
         return iter(self._f())
+
+
+class CallableGeneratorContainer(Callable[[], K]):
+    def __init__(self, iterableFunctions: Iterable[ItrFromFunc[K]]):
+        self._ifs = iterableFunctions
+    
+    def __call__(self) -> Generator[K, None, None]:
+        return iteratorJoiner(self._ifs)
+
+
+def iteratorJoiner(itrIterables: List[ItrFromFunc[K]]) -> Generator[K, None, None]:
+    for i in itrIterables:
+        for obj in i:
+            yield obj
 
 
 class EndQueue:
@@ -779,6 +779,10 @@ class SynchronizedBufferedStream(AbstractSynchronizedBufferedStream):
 
 
 class sset(set, MutableSet[K], _IStream):
+    @property
+    def _itr(self):
+        return ItrFromFunc(lambda: iter(self))
+    
     def __init__(self, *args, **kwrds):
         set.__init__(self, *args, **kwrds)
     
@@ -821,6 +825,10 @@ class sset(set, MutableSet[K], _IStream):
 
 
 class slist(_IStream, List[K]):
+    @property
+    def _itr(self):
+        return ItrFromFunc(lambda: iter(self))
+    
     def __init__(self, *args, **kwrds):
         list.__init__(self, *args, **kwrds)
     
@@ -864,9 +872,17 @@ class slist(_IStream, List[K]):
         sz = self.size()
         indexSet = frozenset(stream(indexes).map(lambda i: i if i >= 0 else i + sz))
         return stream(ItrFromFunc(lambda: indexIgnorer(indexSet, self)))
+    
+    def __iadd__(self, other) -> 'stream[K]':
+        list.__iadd__(self, other)
+        return self
 
 
 class sdict(Dict[K, V], dict, _IStream):
+    @property
+    def _itr(self):
+        return ItrFromFunc(lambda: iter(self))
+    
     def __init__(self, *args, **kwrds):
         dict.__init__(self, *args, **kwrds)
     
@@ -886,12 +902,19 @@ class sdict(Dict[K, V], dict, _IStream):
         dict.update(self, other, **kwargs)
         return self
     
+    def copy(self) -> 'sdict[K,V]':
+        return sdict(self.items())
+    
     def toJson(self) -> 'sdict[K,V]':
         from pyxtension.Json import Json
         return Json(self)
 
 
 class defaultstreamdict(sdict):
+    @property
+    def _itr(self):
+        return ItrFromFunc(lambda: iter(self))
+    
     def __init__(self, default_factory=None, *a, **kw):
         if (default_factory is not None and
                 not callable(default_factory)):
