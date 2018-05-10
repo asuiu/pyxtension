@@ -149,11 +149,11 @@ class Json(sdict, dict, MutableMapping[K, V]):
             return j
     
     def __init__(self, *args, **kwargs):
-        if not kwargs and len(args) == 1 and isinstance(args[0], (str)):
+        if not kwargs and len(args) == 1 and isinstance(args[0], (str, bytes)):
             d = json.loads(args[0])
             assert isinstance(d, dict)
             sdict.__init__(self, d)
-        elif len(args) >= 2 and isinstance(args[0], tuple):
+        elif len(args) >= 2 and isinstance(args[0], (tuple, list)):
             sdict.__init__(self, args)
         else:
             sdict.__init__(self, *args, **kwargs)

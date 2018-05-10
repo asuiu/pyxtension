@@ -16,6 +16,8 @@ class JsonTestCase(unittest.TestCase):
 
     def testConstructor(self):
         self.assertEqual(Json('{"a":2,"4":"5"}'), {"a": 2, "4": "5"})
+        self.assertEqual(Json((("a", 2), ("4", "5"))), {"a": 2, "4": "5"})
+        self.assertEqual(Json(b'{"a":2,"4":"5"}'), {"a": 2, "4": "5"})
 
     def testBase(self):
         self.assertEqual(self.d.a, 2)
@@ -55,7 +57,7 @@ class JsonTestCase(unittest.TestCase):
     def testSpecialKeys(self):
         d = Json((("__init__", 2), (3, 4), ("d", {"d2": 4})))
         self.assertEqual(d["__init__"], 2)
-        self.assertNotEquals(d.__init__, 2)
+        self.assertNotEqual(d.__init__, 2)
         self.assertIsInstance(d.__init__, types.MethodType)
 
     def testIteritems(self):
@@ -67,7 +69,7 @@ class JsonTestCase(unittest.TestCase):
         self.assertEqual(self.d.items().toList(), [('a', 2), (3, 4), ('d', {'d2': 4})])
         self.assertEqual(self.d.items()[2][1].d2, 4)
         self.assertIsInstance(self.d.items(), stream)
-        self.assertEquals(self.d.items().sorted(key=str).toList(), [('a', 2), ('d', {'d2': 4}), (3, 4)])
+        self.assertEqual(self.d.items().sorted(key=str).toList(), [('a', 2), ('d', {'d2': 4}), (3, 4)])
         self.assertEqual(Json({1: 1, 2: 2, 3: 3}).values().sum(), 6)
 
     def testJsonList(self):
