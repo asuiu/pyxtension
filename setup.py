@@ -28,7 +28,7 @@ pyMajorVersion = str(sys.version_info[0])
 for fname in py_modules:
     copy(join(basedir, 'py' + pyMajorVersion, 'pyxtension', fname + '.py'), dest_package_dir)
 parameters = dict(name='pyxtension',
-                  version='1.1.5',
+                  version='1.1.6',
                   description='Extension library for Python',
                   author='Andrei Suiu',
                   author_email='andrei.suiu@gmail.com',

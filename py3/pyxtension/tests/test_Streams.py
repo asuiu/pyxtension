@@ -15,8 +15,92 @@ xrange = range
 __author__ = 'ASU'
 
 
-# s = stream((1, 2, 3))
-# a = s.map(lambda _: int(_))[1:2][0]
+class SlistTestCase(unittest.TestCase):
+    def test_slist_str_nominal(self):
+        l = [1, 2, 3]
+        s = slist(l)
+        s1 = str(s)
+        self.assertEqual(str(s), str(l))
+    
+    def test_slist_repr_nominal(self):
+        l = [1, 2, 3]
+        s = slist(l)
+        self.assertEqual(repr(s), repr(l))
+    
+    def test_slist_add(self):
+        l1 = slist([1, 2])
+        l2 = slist([3, 4])
+        l3 = (l1 + l2)
+        self.assertIsInstance(l3, stream)
+        self.assertNotIsInstance(l3, slist)
+        self.assertListEqual(l3.toList(), [1, 2, 3, 4])
+    
+    def test_slist_iadd(self):
+        l1 = slist([1, 2])
+        l2 = slist([3, 4])
+        l1 += l2
+        self.assertIsInstance(l1, slist)
+        self.assertListEqual(l1.toList(), [1, 2, 3, 4])
+    
+    def testStreamList(self):
+        l = lambda: slist((1, 2, 3))
+        self.assertEqual(l().toList(), [1, 2, 3])
+        self.assertEqual(l()[-1], 3)
+
+    def test_reversedNominal(self):
+        s = stream([1, 2, 3])
+        self.assertListEqual(s.reversed().toList(), [3, 2, 1])
+
+
+class SdictTestCase(unittest.TestCase):
+    def testSdictToJson(self):
+        j = stream((("a", 2), (3, 4))).toMap().toJson()
+        self.assertIsInstance(j, Json)
+        self.assertEqual(j.a, 2)
+        self.assertDictEqual(j, {'a': 2, 3: 4})
+    
+    def test_sdict(self):
+        d = sdict({1: 2, 3: 4})
+        self.assertListEqual(d.items().map(lambda t: t).toList(), [(1, 2), (3, 4)])
+    
+    def test_sdict_copy(self):
+        d = sdict({1: 2, 3: 4})
+        copy = d.copy()
+        self.assertIsInstance(copy, sdict)
+        self.assertSetEqual(set(d.items()), set(copy.items()))
+        d[1] = 3
+        self.assertEqual(copy[1], 2)
+    
+    def test_reversed_raises(self):
+        s = sdict({1: 1, 2: 2})
+        with self.assertRaises(TypeError):
+            s.reversed().toList()
+
+
+class SsetTestCase(unittest.TestCase):
+    def testStreamSet(self):
+        s = lambda: sset([1, 2, 3, 2])
+        self.assertEqual(s().size(), 3)
+        self.assertEqual(s().map(lambda x: x).toList(), [1, 2, 3])
+        self.assertEqual(len(s()), 3)
+    
+    def test_sset_updateReturnsSelf(self):
+        s = sset((1, 2))
+        l = s.update((2, 3))
+        self.assertEqual(l, set((1, 2, 3)))
+    
+    def test_sset_intersection_updateReturnsSelf(self):
+        self.assertEqual(sset((1, 2)).update(set((2, 3))), set((1, 2, 3)))
+    
+    def test_ssetChaining(self):
+        s = sset().add(0).clear().add(1).add(2).remove(2).discard(3).update(set((3, 4, 5))) \
+            .intersection_update(set((1, 3, 4))).difference_update(set((4,))).symmetric_difference_update(set((3, 4)))
+        self.assertEqual(s, set((1, 4)))
+    
+    def test_reversed_raises(self):
+        s = sset(iter(range(1, 4)))
+        with self.assertRaises(TypeError):
+            s.reversed().toList()
 
 class StreamTestCase(unittest.TestCase):
     def setUp(self):
@@ -72,65 +156,10 @@ class StreamTestCase(unittest.TestCase):
         repr(s)
         self.assertListEqual(s.toList(), [1, 2, 3, 4])
     
-    def test_slist_str_nominal(self):
-        l = [1, 2, 3]
-        s = slist(l)
-        s1 = str(s)
-        self.assertEqual(str(s), str(l))
-    
-    def test_slist_repr_nominal(self):
-        l = [1, 2, 3]
-        s = slist(l)
-        self.assertEqual(repr(s), repr(l))
-    
-    def test_slist_add(self):
-        l1 = slist([1, 2])
-        l2 = slist([3, 4])
-        l3 = (l1 + l2)
-        self.assertIsInstance(l3, stream)
-        self.assertNotIsInstance(l3, slist)
-        self.assertListEqual(l3.toList(), [1, 2, 3, 4])
-    
-    def test_slist_iadd(self):
-        l1 = slist([1, 2])
-        l2 = slist([3, 4])
-        l1 += l2
-        self.assertIsInstance(l1, slist)
-        self.assertListEqual(l1.toList(), [1, 2, 3, 4])
-    
     def testStreamToJson(self):
         j = stream((("a", 2), (3, 4))).toJson()
         self.assertIsInstance(j, JsonList)
         self.assertListEqual(j, [["a", 2], [3, 4]])
-    
-    def testSdictToJson(self):
-        j = stream((("a", 2), (3, 4))).toMap().toJson()
-        self.assertIsInstance(j, Json)
-        self.assertEqual(j.a, 2)
-        self.assertDictEqual(j, {'a': 2, 3: 4})
-    
-    def testStreamList(self):
-        l = lambda: slist((1, 2, 3))
-        self.assertEqual(l().toList(), [1, 2, 3])
-        self.assertEqual(l()[-1], 3)
-    
-    def testStreamSet(self):
-        s = lambda: sset([1, 2, 3, 2])
-        self.assertEqual(s().size(), 3)
-        self.assertEqual(s().map(lambda x: x).toList(), [1, 2, 3])
-        self.assertEqual(len(s()), 3)
-    
-    def test_sdict(self):
-        d = sdict({1: 2, 3: 4})
-        self.assertListEqual(d.items().map(lambda t: t).toList(), [(1, 2), (3, 4)])
-    
-    def test_sdict_copy(self):
-        d = sdict({1: 2, 3: 4})
-        copy = d.copy()
-        self.assertIsInstance(copy, sdict)
-        self.assertSetEqual(set(d.items()), set(copy.items()))
-        d[1] = 3
-        self.assertEqual(copy[1], 2)
     
     def testStreamsFromGenerator(self):
         sg = stream(ItrFromFunc(lambda: (i for i in range(4))))
@@ -199,28 +228,14 @@ class StreamTestCase(unittest.TestCase):
         s = stream(({1: 2, 3: 4}, {5: 6, 7: 8}))
         self.assertEqual(s.fastFlatMap(dict.items).toSet(), set(((1, 2), (5, 6), (3, 4), (7, 8))))
 
-
     def test_fastFlatMap_defaultIdentityFunction(self):
         l = slist(({1: 2, 3: 4}, {5: 6, 7: 8}))
         self.assertEqual(l.fastFlatMap().toSet(), set((1, 3, 5, 7)))
 
-    def test_sset_updateReturnsSelf(self):
-        s = sset((1, 2))
-        l = s.update((2, 3))
-        self.assertEqual(l, set((1, 2, 3)))
-    
-    def test_sset_intersection_updateReturnsSelf(self):
-        self.assertEqual(sset((1, 2)).update(set((2, 3))), set((1, 2, 3)))
-    
     def test_reduceUsesInitProperly(self):
         self.assertEqual(slist([sset((1, 2)), sset((3, 4))]).reduce(lambda x, y: x.update(y)), set((1, 2, 3, 4)))
         self.assertEqual(slist([sset((1, 2)), sset((3, 4))]).reduce(lambda x, y: x.update(y), sset()),
                           set((1, 2, 3, 4)))
-    
-    def test_ssetChaining(self):
-        s = sset().add(0).clear().add(1).add(2).remove(2).discard(3).update(set((3, 4, 5))) \
-            .intersection_update(set((1, 3, 4))).difference_update(set((4,))).symmetric_difference_update(set((3, 4)))
-        self.assertEqual(s, set((1, 4)))
     
     def test_maxes(self):
         self.assertEqual(stream(['a', 'abc', 'abcd', 'defg', 'cde']).maxes(lambda s: len(s)), ['abcd', 'defg'])
@@ -418,13 +433,17 @@ class StreamTestCase(unittest.TestCase):
         mock.assert_called_once_with(joiner)
     
     def test_reversedNominal(self):
-        s = slist([1, 2, 3])
+        s = stream([1, 2, 3])
         self.assertListEqual(s.reversed().toList(), [3, 2, 1])
-    
+
+    def test_reverse_iterable(self):
+        s = stream(range(1, 4))
+        self.assertListEqual(s.reversed().toList(), [3, 2, 1])
+
     def test_reversedException(self):
-        s = stream(xrange(1, 2, 3))
+        s = stream(iter(range(1, 4)))
         with self.assertRaises(TypeError):
-            s.reversed()
+            s.reversed().toList()
 
 
 """

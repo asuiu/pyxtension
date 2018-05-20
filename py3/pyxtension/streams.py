@@ -18,7 +18,7 @@ from operator import itemgetter
 from queue import Queue
 from types import GeneratorType
 from typing import Optional, Union, Callable, TypeVar, Iterable, Iterator, Tuple, BinaryIO, List, Mapping, MutableSet, \
-    Dict, Generator, overload, Generic
+    Dict, Generator, overload
 
 ifilter = filter
 imap = map
@@ -268,7 +268,7 @@ class _IStream(Iterable[K], ABC):
     
     def reversed(self) -> 'stream[K]':
         try:
-            return stream(reversed(self))
+            return self.__reversed__()
         except TypeError:
             raise TypeError("Can not reverse stream")
     
@@ -669,7 +669,29 @@ class stream(_IStream, Iterable[K]):
             return str(self._itr)
         else:
             return object.__str__(self)
+
+    def __reversed__(self):
     
+        try:
+            return stream(reversed(self._itr))
+        except TypeError:
+            try:
+                def r():
+                    try:
+                        n = len(self)
+                    except TypeError:
+                        raise TypeError("Can not reverse stream")
+                    for i in range(n, 0, -1):
+                        try:
+                            yield self[i - 1]
+                        except TypeError:
+                            raise TypeError("Can not reverse stream")
+            
+                return stream(ItrFromFunc(lambda: r()))
+        
+            except Exception:
+                raise TypeError("Can not reverse stream")
+
     @staticmethod
     def __binaryChunksStreamGenerator(fs, format="<L", statHandler: Optional[Callable[[int, int], None]] = None):
         """
@@ -822,6 +844,8 @@ class sset(set, MutableSet[K], _IStream):
     def discard(self, *args, **kwargs) -> 'sset[K]':
         super(sset, self).discard(*args, **kwargs)
         return self
+    def __reversed__(self):
+        raise TypeError("'sset' object is not reversible")
 
 
 class slist(_IStream, List[K]):
