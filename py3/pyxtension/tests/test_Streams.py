@@ -102,6 +102,65 @@ class SsetTestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             s.reversed().toList()
 
+    def test_disjunction(self):
+        s1 = sset({1, 2, 3})
+        s2 = sset({1, 2, 4})
+        s3 = s1 | s2
+        self.assertIsInstance(s3, sset)
+        self.assertSetEqual(s3, {1, 2, 3, 4})
+
+    def test_conjunction(self):
+        s1 = sset({1, 2, 3})
+        s2 = sset({1, 2, 4})
+        s3 = s1 & s2
+        self.assertIsInstance(s3, sset)
+        self.assertSetEqual(s3, {1, 2})
+
+    def test_sub(self):
+        s1 = sset({1, 2, 3})
+        s2 = sset({1, 2, 4})
+        s3 = s1 - s2
+        self.assertIsInstance(s3, sset)
+        self.assertSetEqual(s3, {3})
+
+    def test_xor(self):
+        s1 = sset({1, 2, 3})
+        s2 = sset({1, 2, 4})
+        s3 = s1 ^ s2
+        self.assertIsInstance(s3, sset)
+        self.assertSetEqual(s3, {3, 4})
+
+    def test_union(self):
+        s1 = sset({1, 2, 3})
+        s2 = sset({1, 2, 4})
+        s2_2 = sset({1, 2, 5})
+        s3 = s1.union(s2, s2_2)
+        self.assertIsInstance(s3, sset)
+        self.assertSetEqual(s3, {1, 2, 3, 4, 5})
+
+    def test_intersection(self):
+        s1 = sset({1, 2, 3})
+        s2 = sset({1, 2, 4})
+        s2_2 = sset({1, 2, 5})
+        s3 = s1.intersection(s2, s2_2)
+        self.assertIsInstance(s3, sset)
+        self.assertSetEqual(s3, {1, 2})
+
+    def test_difference(self):
+        s1 = sset({1, 2, 3})
+        s2 = sset({1, 2, 4})
+        s2_2 = sset({1, 2, 5})
+        s3 = s1.difference(s2, s2_2)
+        self.assertIsInstance(s3, sset)
+        self.assertSetEqual(s3, {3, })
+
+    def test_symmetric_difference(self):
+        s1 = sset({1, 2, 3})
+        s2 = sset({1, 2, 4})
+        s3 = s1.symmetric_difference(s2)
+        self.assertIsInstance(s3, sset)
+        self.assertSetEqual(s3, {3, 4})
+
 class StreamTestCase(unittest.TestCase):
     def setUp(self):
         self.s = lambda: stream((1, 2, 3))

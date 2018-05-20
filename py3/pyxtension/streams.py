@@ -18,7 +18,7 @@ from operator import itemgetter
 from queue import Queue
 from types import GeneratorType
 from typing import Optional, Union, Callable, TypeVar, Iterable, Iterator, Tuple, BinaryIO, List, Mapping, MutableSet, \
-    Dict, Generator, overload
+    Dict, Generator, overload, AbstractSet, Set
 
 ifilter = filter
 imap = map
@@ -846,6 +846,30 @@ class sset(set, MutableSet[K], _IStream):
         return self
     def __reversed__(self):
         raise TypeError("'sset' object is not reversible")
+
+    def __or__(self, s: AbstractSet[V]) -> Set[Union[K, V]]:
+        return sset(super().__or__(s))
+
+    def union(self, *s: Iterable[K]) -> Set[K]:
+        return sset(super().union(*s))
+
+    def __and__(self, other):
+        return sset(super().__and__(other))
+
+    def intersection(self, *s: Iterable[object]) -> Set[K]:
+        return sset(super().intersection(*s))
+
+    def __sub__(self, s: AbstractSet[object]) -> Set[K]:
+        return sset(super().__sub__(s))
+
+    def __xor__(self, s: AbstractSet[V]) -> Set[Union[K, V]]:
+        return sset(super().__xor__(s))
+
+    def difference(self, *s: Iterable[V]) -> Set[Union[K, V]]:
+        return sset(super().difference(*s))
+
+    def symmetric_difference(self, s: Iterable[V]) -> Set[Union[K, V]]:
+        return sset(super().symmetric_difference(s))
 
 
 class slist(_IStream, List[K]):
