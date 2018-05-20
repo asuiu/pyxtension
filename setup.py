@@ -28,7 +28,7 @@ pyMajorVersion = str(sys.version_info[0])
 for fname in py_modules:
     copy(join(basedir, 'py' + pyMajorVersion, 'pyxtension', fname + '.py'), dest_package_dir)
 parameters = dict(name='pyxtension',
-                  version='1.1.6',
+                  version='1.1.8',
                   description='Extension library for Python',
                   author='Andrei Suiu',
                   author_email='andrei.suiu@gmail.com',
@@ -46,11 +46,11 @@ parameters = dict(name='pyxtension',
                       "Programming Language :: Python :: Implementation :: CPython",
                       "Programming Language :: Python :: Implementation :: PyPy", ])
 if pyMajorVersion == '2':
-    import pip._internal
+    import pip
     
     requires = ['mock']
     for reqPackage in requires:
-        pip._internal.main(['install', reqPackage])  # for some reasons it can't be found in latest pip
+        pip.main(['install', reqPackage])
 elif pyMajorVersion == '3':
     pass
 
