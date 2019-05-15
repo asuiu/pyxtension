@@ -272,6 +272,8 @@ class _IStream(Iterable[K], ABC):
             return self.__reversed__()
         except TypeError:
             raise TypeError("Can not reverse stream")
+        except AttributeError:
+            raise TypeError("Can not reverse stream")
 
     def exists(self, f: Callable[[K], bool]) -> bool:
         """
@@ -672,7 +674,6 @@ class stream(_IStream, Iterable[K]):
             return object.__str__(self)
 
     def __reversed__(self):
-
         try:
             return stream(reversed(self._itr))
         except TypeError:
@@ -873,7 +874,7 @@ class sset(set, MutableSet[K], _IStream):
         return sset(super().symmetric_difference(s))
 
 
-class slist(list, stream, List[K]):
+class slist(List[K], stream):
     @property
     def _itr(self):
         return ItrFromFunc(lambda: iter(self))

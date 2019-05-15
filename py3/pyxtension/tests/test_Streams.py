@@ -81,7 +81,7 @@ class SdictTestCase(unittest.TestCase):
 
     def test_reversed_raises(self):
         s = sdict({1: 1, 2: 2})
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(TypeError):
             s.reversed().toList()
 
 
