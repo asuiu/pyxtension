@@ -1,3 +1,4 @@
+dist: xenial   # required for Python >= 3.7
 language: python
 python:
 #  - "3.4"
@@ -6,8 +7,9 @@ python:
   - "3.6"
   - "3.7"
   - "2.7"
+  # PyPy versions
   - "pypy"
-#  - "pypy3"
+  - "pypy3.6"
 before_script: pip install coveralls
 install:
   - "python setup.py install"
