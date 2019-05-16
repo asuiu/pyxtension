@@ -9,7 +9,7 @@ python:
   - "2.7"
   # PyPy versions
   - "pypy"
-  - "pypy3.6"
+  - "pypy3.5"
 before_script: pip install coveralls
 install:
   - "python setup.py install"
