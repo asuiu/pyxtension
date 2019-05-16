@@ -1,15 +1,14 @@
 dist: xenial   # required for Python >= 3.7
 language: python
 python:
-#  - "3.4"
-#  - "3.3"
-#  - "3.2"
+  # - "3.5" - incompatible due to use of type hints
   - "3.6"
   - "3.7"
   - "2.7"
   # PyPy versions
   - "pypy"
-  - "pypy3.5"
+  # - "pypy3.5" - incompatible
+  # - "pypy3.6" - unsupported by Travis
 before_script: pip install coveralls
 install:
   - "python setup.py install"
