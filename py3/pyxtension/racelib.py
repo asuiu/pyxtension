@@ -3,6 +3,7 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 # Purpose: Concurrent utility classes (name coming from RACEconditionLIBrary)
 # Created: 11/26/2015
+import threading
 import time
 
 from typing import Union, Callable
@@ -11,11 +12,7 @@ __author__ = 'ASU'
 
 
 class ContextLock():
-    def __init__(self, lock):
-        """
-        :param lock:
-        :type lock: thread.LockType
-        """
+    def __init__(self, lock: threading.Lock):
         self.__lock = lock
 
     def __enter__(self):
@@ -30,10 +27,9 @@ class TimePerformanceLogger:
     Used to measure the performance of a code block run within a With Statement Context Manager
     """
 
-    def __init__(self, logger):
+    def __init__(self, logger: Callable[[float], None] = lambda sec: print("Finished in %.02f sec" % sec)):
         """
-        :param logger: logger function tha would get argument number of seconds
-        :type logger: (basestring) -> None
+        :param logger: logger function that would get number of seconds as argument
         """
         self._logger = logger
 
