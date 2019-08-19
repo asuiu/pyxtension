@@ -67,7 +67,7 @@ class CountLogger:
         self._cnt += 1
         if self._cnt % self._n == 0:
             elapsed = time.time() - self._t0
-            eta = elapsed / self._cnt * self._total if self._total > 0 else float('NaN')
+            eta = elapsed / self._cnt * (self._total-self._cnt) if self._total>0 else float('NaN')
             msg = self._msg % (self._cnt, self._total, elapsed, eta)
             kwargs = {'end': ''} if self._use_end else {}
             self._func(msg, **kwargs)
