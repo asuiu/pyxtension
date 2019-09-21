@@ -173,16 +173,12 @@ class StreamTestCase(unittest.TestCase):
     def setUp(self):
         self.s = lambda: stream((1, 2, 3))
 
-    # ToDo:Implement
-    @unittest.skip("ToDo:implement")
     def test_fastFlatMap_reiteration(self):
         l = stream(ItrFromFunc(lambda: (xrange(i) for i in xrange(5)))).fastFlatMap()
         self.assertEqual(l.toList(), [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])
         self.assertEqual(l.toList(),
                          [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])  # second time to assert the regeneration of generator
 
-    # ToDo:Implement
-    @unittest.skip("ToDo:implement")
     def test_fastmap_reiteration(self):
         l = stream(ItrFromFunc(lambda: (xrange(i) for i in xrange(5)))).fastmap(len)
         self.assertEqual(l.toList(), [0, 1, 2, 3, 4])
