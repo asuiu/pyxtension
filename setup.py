@@ -46,11 +46,14 @@ parameters = dict(name='pyxtension',
                       "Programming Language :: Python :: Implementation :: CPython",
                       "Programming Language :: Python :: Implementation :: PyPy", ])
 if pyMajorVersion == '2':
-    import pip
-    
+    try:
+        from pip import main as pip_main
+    except ImportError:
+        from pip._internal import main as pip_main
+
     requires = ['mock']
     for reqPackage in requires:
-        pip.main(['install', reqPackage])
+        pip_main(['install', reqPackage])
 elif pyMajorVersion == '3':
     pass
 
