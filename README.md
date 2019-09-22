@@ -4,6 +4,16 @@
 
 [pyxtension](https://github.com/asuiu/pyxtension) is a pure Python GNU-licensed library that includes Scala-like streams, Json with attribute access syntax, and other common-use stuff.
 
+## Install
+```
+pip install pyxtension
+```
+or
+```
+git clone https://github.com/asuiu/pyxtension.git
+cd pyxtension
+python setup.py install
+```
 ## Modules overview
 ### Json.py
 ##### Json
