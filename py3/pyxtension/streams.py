@@ -14,7 +14,7 @@ from abc import ABC
 from collections import defaultdict
 from functools import reduce
 from itertools import groupby
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from operator import itemgetter
 from queue import Queue
 from types import GeneratorType
@@ -232,7 +232,7 @@ class _IStream(Iterable[K], ABC):
     def map(self, f: Callable[[K], V]) -> 'stream[V]':
         return stream(ItrFromFunc(lambda: map(f, self)))
 
-    def mpmap(self, f: Callable[[K], V], poolSize: int = 16, bufferSize: Optional[int] = None) -> 'stream[V]':
+    def mpmap(self, f: Callable[[K], V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[V]':
         """
         Parallel ordered map using multiprocessing.Pool.imap
         :param poolSize: number of processes in Pool
@@ -250,7 +250,7 @@ class _IStream(Iterable[K], ABC):
 
         return stream(self.__mp_pool_generator(f, poolSize, bufferSize))
 
-    def mpfastmap(self, f: Callable[[K], V], poolSize: int = 16, bufferSize: Optional[int] = None) -> 'stream[V]':
+    def mpfastmap(self, f: Callable[[K], V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[V]':
         """
         Parallel unordered map using multiprocessing.Pool.imap_unordered
         :param poolSize: number of processes in Pool
@@ -268,7 +268,7 @@ class _IStream(Iterable[K], ABC):
 
         return stream(self.__mp_fast_pool_generator(f, poolSize, bufferSize))
 
-    def fastmap(self, f: Callable[[K], V], poolSize: int = 16, bufferSize: Optional[int] = None) -> 'stream[V]':
+    def fastmap(self, f: Callable[[K], V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[V]':
         """
         Parallel unordered map using multithreaded pool.
         It spawns at most poolSize threads and applies the f function.
@@ -288,7 +288,7 @@ class _IStream(Iterable[K], ABC):
         return stream(ItrFromFunc(lambda: self.__fastmap_generator(f, poolSize, bufferSize)))
 
     # ToDo - add fastFlatMap to Python 2.x version
-    def fastFlatMap(self, predicate: Callable[[K], Iterable[V]] = _IDENTITY_FUNC, poolSize: int = 16,
+    def fastFlatMap(self, predicate: Callable[[K], Iterable[V]] = _IDENTITY_FUNC, poolSize: int = cpu_count(),
                     bufferSize: Optional[int] = None) -> 'stream[V]':
         if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:
             raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
