@@ -46,7 +46,7 @@ From now on, you may simply write the following three lines:
 ```
 ### streams.py
 #### stream
-`stream` subclasses `collections.Iterable`. It's the same Python iterable, but with more added methods.
+`stream` subclasses `collections.Iterable`. It's the same Python iterable, but with more added methods, suitable for multithreading and multiprocess processings.
 Used to create stream processing pipelines, similar to those used in [Scala](http://www.scala-lang.org/) and [MapReduce](https://en.wikipedia.org/wiki/MapReduce) programming model.
 Those who used [Apache Spark](http://spark.apache.org/) [RDD](http://spark.apache.org/docs/latest/programming-guide.html#rdd-operations) functions will find this model of processing very easy to use.
 
@@ -67,7 +67,7 @@ From now on, you may simply write the following lines:
 64
 ```
 
-#### A Word Count [Map-Reduce](https://en.wikipedia.org/wiki/MapReduce) naive example using multithreading map
+#### A Word Count [Map-Reduce](https://en.wikipedia.org/wiki/MapReduce) naive example using multiprocessing map
 ```python
 corpus = [
     "MapReduce is a programming model and an associated implementation for processing and generating large data sets with a parallel, distributed algorithm on a cluster.",
@@ -80,13 +80,43 @@ def reduceMaps(m1, m2):
     return m1
 
 word_counts = stream(corpus).\
-    fastmap(lambda line: stream(line.lower().split(' ')).countByValue()).\
+    mpmap(lambda line: stream(line.lower().split(' ')).countByValue()).\
     reduce(reduceMaps)
 ```
 
 #### Basic methods
 ###### **map(f)**
 Identic with builtin `map` but returns a stream
+
+
+###### **mpmap(f, poolSize=16)**
+Parallel ordered map using `multiprocessing.Pool.imap()`.
+
+It can replace the `map` when need to split computations to multiple cores, and order of results matters.
+
+It spawns at most `poolSize` processes and applies the `f` function.
+
+The elements in the result stream appears in the same order they appear in the initial iterable.
+
+```
+:type f: (T) -> V
+:rtype: `stream`
+```
+
+
+###### **mpfastmap(f, poolSize=16)**
+Parallel ordered map using `multiprocessing.Pool.imap_unordered()`.
+
+It can replace the `map` when the ordered of results doesn't matter.
+
+It spawns at most `poolSize` processes and applies the `f` function.
+
+The elements in the result stream appears in the unpredicted order.
+
+```
+:type f: (T) -> V
+:rtype: `stream`
+```
 
 
 ###### **fastmap(f, poolSize=16)**
