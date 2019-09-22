@@ -4,16 +4,21 @@
 
 [pyxtension](https://github.com/asuiu/pyxtension) is a pure Python GNU-licensed library that includes Scala-like streams, Json with attribute access syntax, and other common-use stuff.
 
-## Install
+## Installation
 ```
 pip install pyxtension
 ```
-or
+or from Github:
 ```
 git clone https://github.com/asuiu/pyxtension.git
 cd pyxtension
 python setup.py install
 ```
+or
+```
+git submodule add https://github.com/asuiu/pyxtension.git
+```
+
 ## Modules overview
 ### Json.py
 ##### Json
@@ -425,16 +430,6 @@ Assignment as keys will still work::
     > json['foo']['bar'] = 'baz'
     > json.foo
     {'bar': 'baz'}
-```
-### Installation
-from Github::
-```
-    $ git clone https://github.com/asuiu/pyxtension.git
-    $ python setyp.py install
-
-or
-
-    $ git submodule add https://github.com/asuiu/pyxtension.git
 ```
 
 ### License
