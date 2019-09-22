@@ -14,6 +14,7 @@ from abc import ABC
 from collections import defaultdict
 from functools import reduce
 from itertools import groupby
+from multiprocessing import Pool
 from operator import itemgetter
 from queue import Queue
 from types import GeneratorType
@@ -201,6 +202,24 @@ class _IStream(Iterable[K], ABC):
             else:
                 yield newEl
 
+    def __mp_pool_generator(self, f: Callable[[K], V], poolSize: int, bufferSize: int) -> Generator[V, None, None]:
+        p = Pool(poolSize)
+        for el in p.imap(f, self, chunksize=bufferSize):
+            yield el
+        p.close()
+        p.join()
+
+    def __mp_fast_pool_generator(self, f: Callable[[K], V], poolSize: int, bufferSize: int) -> Generator[V, None, None]:
+        p = Pool(poolSize)
+        try:
+            for el in p.imap_unordered(f, iter(self), chunksize=bufferSize):
+                yield el
+        except GeneratorExit:
+            p.terminate()
+        finally:
+            p.close()
+            p.join()
+
     @staticmethod
     def __unique_generator(itr, f):
         st = set()
@@ -212,6 +231,42 @@ class _IStream(Iterable[K], ABC):
 
     def map(self, f: Callable[[K], V]) -> 'stream[V]':
         return stream(ItrFromFunc(lambda: map(f, self)))
+
+    def mpmap(self, f: Callable[[K], V], poolSize: int = 16, bufferSize: Optional[int] = None) -> 'stream[V]':
+        """
+        Parallel ordered map using multiprocessing.Pool.imap
+        :param poolSize: number of processes in Pool
+        :param bufferSize: passed as chunksize param to imap()
+        """
+        # Validations
+        if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:
+            raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+        elif poolSize == 1:
+            return self.map(f)
+        if bufferSize is None:
+            bufferSize = poolSize * 2
+        if not isinstance(bufferSize, int) or bufferSize <= 0 or bufferSize > 2 ** 12:
+            raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+
+        return stream(self.__mp_pool_generator(f, poolSize, bufferSize))
+
+    def mpfastmap(self, f: Callable[[K], V], poolSize: int = 16, bufferSize: Optional[int] = None) -> 'stream[V]':
+        """
+        Parallel unordered map using multiprocessing.Pool.imap_unordered
+        :param poolSize: number of processes in Pool
+        :param bufferSize: passed as chunksize param to imap()
+        """
+        # Validations
+        if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:
+            raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+        elif poolSize == 1:
+            return self.map(f)
+        if bufferSize is None:
+            bufferSize = poolSize * 2
+        if not isinstance(bufferSize, int) or bufferSize <= 0 or bufferSize > 2 ** 12:
+            raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+
+        return stream(self.__mp_fast_pool_generator(f, poolSize, bufferSize))
 
     def fastmap(self, f: Callable[[K], V], poolSize: int = 16, bufferSize: Optional[int] = None) -> 'stream[V]':
         """

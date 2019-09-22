@@ -3,6 +3,7 @@ import random
 import sys
 import time
 import unittest
+from functools import partial
 from io import BytesIO
 from unittest.mock import MagicMock
 
@@ -13,6 +14,15 @@ ifilter = filter
 xrange = range
 
 __author__ = 'ASU'
+
+
+def PICKABLE_DUMB_FUNCTION(x):
+    return x
+
+
+def PICKABLE_SLEEP_FUNC(el):
+    time.sleep(0.05)
+    return el * el
 
 
 class SlistTestCase(unittest.TestCase):
@@ -273,28 +283,6 @@ class StreamTestCase(unittest.TestCase):
         l = slist(({1: 2, 3: 4}, {5: 6, 7: 8}))
         self.assertEqual(l.flatMap().toSet(), set((1, 3, 5, 7)))
 
-    def test_fastFlatMap_nominal(self):
-        s = stream([[1, 2], [3, 4], [4, 5]])
-        self.assertListEqual(s.fastFlatMap(poolSize=2).toList(), [1, 2, 3, 4, 4, 5])
-
-    def test_fastFlatMap_random_sleep_function(self):
-        s = stream([1, 2, 5, 3, 4])
-
-        def random_sleep(i):
-            time.sleep(random.randrange(0, 10) * 0.01)
-            return range(i)
-
-        self.assertListEqual(s.fastFlatMap(random_sleep, poolSize=2).sorted(),
-                             [0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4])
-
-    def test_fastFlatMap_withPredicate(self):
-        s = stream(({1: 2, 3: 4}, {5: 6, 7: 8}))
-        self.assertEqual(s.fastFlatMap(dict.items).toSet(), set(((1, 2), (5, 6), (3, 4), (7, 8))))
-
-    def test_fastFlatMap_defaultIdentityFunction(self):
-        l = slist(({1: 2, 3: 4}, {5: 6, 7: 8}))
-        self.assertEqual(l.fastFlatMap().toSet(), set((1, 3, 5, 7)))
-
     def test_reduceUsesInitProperly(self):
         self.assertEqual(slist([sset((1, 2)), sset((3, 4))]).reduce(lambda x, y: x.update(y)), set((1, 2, 3, 4)))
         self.assertEqual(slist([sset((1, 2)), sset((3, 4))]).reduce(lambda x, y: x.update(y), sset()),
@@ -355,6 +343,28 @@ class StreamTestCase(unittest.TestCase):
         s = stream(i for i in xrange(1))
         self.assertEqual(s[0], 0)
 
+    def test_fastFlatMap_nominal(self):
+        s = stream([[1, 2], [3, 4], [4, 5]])
+        self.assertListEqual(s.fastFlatMap(poolSize=2).toList(), [1, 2, 3, 4, 4, 5])
+
+    def test_fastFlatMap_random_sleep_function(self):
+        s = stream([1, 2, 5, 3, 4])
+
+        def random_sleep(i):
+            time.sleep(random.randrange(0, 10) * 0.01)
+            return range(i)
+
+        self.assertListEqual(s.fastFlatMap(random_sleep, poolSize=2).sorted(),
+                             [0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4])
+
+    def test_fastFlatMap_withPredicate(self):
+        s = stream(({1: 2, 3: 4}, {5: 6, 7: 8}))
+        self.assertEqual(s.fastFlatMap(dict.items).toSet(), set(((1, 2), (5, 6), (3, 4), (7, 8))))
+
+    def test_fastFlatMap_defaultIdentityFunction(self):
+        l = slist(({1: 2, 3: 4}, {5: 6, 7: 8}))
+        self.assertEqual(l.fastFlatMap().toSet(), set((1, 3, 5, 7)))
+
     def test_fastmap_time(self):
         def sleepFunc(el):
             time.sleep(0.3)
@@ -406,6 +416,118 @@ class StreamTestCase(unittest.TestCase):
         s = stream([None])
         with self.assertRaises(TypeError):
             res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
+
+    def test_mpfastmap_time(self):
+        N = 10
+        s = stream(xrange(N))
+        t1 = time.time()
+        res = s.mpfastmap(PICKABLE_SLEEP_FUNC, poolSize=4).toSet()
+        dt = time.time() - t1
+        expected = set(i * i for i in xrange(N))
+        self.assertSetEqual(res, expected)
+        self.assertLessEqual(dt, 2)
+
+    def test_mpfastmap_nominal(self):
+        s = stream(xrange(10))
+        f = partial(pow, 2)
+        res = s.mpfastmap(f, poolSize=4).toSet()
+        expected = set(f(i) for i in xrange(10))
+        self.assertSetEqual(res, expected)
+
+    def test_mpfastmap_one_el(self):
+        s = stream([2, ])
+        f = partial(pow, 2)
+        res = s.mpfastmap(f, poolSize=4).toSet()
+        expected = set((4,))
+        self.assertSetEqual(res, expected)
+
+    def test_mpfastmap_no_el(self):
+        s = stream([])
+        res = s.mpfastmap(lambda x: x * x, poolSize=4).toSet()
+        expected = set()
+        self.assertSetEqual(res, expected)
+
+    def test_mpfastmap_None_el(self):
+        s = stream([None])
+        res = s.mpfastmap(PICKABLE_DUMB_FUNCTION, poolSize=4).toSet()
+        expected = set([None])
+        self.assertSetEqual(res, expected)
+
+    # ToDo: fix the Pool.imap not true lazyness
+    @unittest.skip("Pool.imap has bug. Workaround: https://stackoverflow.com/Questions/5318936/Python-Multiprocessing-Pool-Lazy-Iteration")
+    def test_mpfastmap_take_less(self):
+        arr = []
+
+        def m(i):
+            arr.append(i)
+            return i
+
+        s = stream(range(100)).map(m).mpfastmap(PICKABLE_DUMB_FUNCTION, poolSize=4, bufferSize=5).take(20)
+        res = s.toList()
+        self.assertLessEqual(len(arr), 30)
+        self.assertEqual(len(res), 20)
+
+    def test_mpfastmap_raises_exception(self):
+        s = stream([None])
+        f = partial(pow, 2)
+        with self.assertRaises(TypeError):
+            res = s.mpfastmap(f, poolSize=4).toSet()
+
+    def test_mpmap_time(self):
+        N = 10
+        s = stream(xrange(N))
+        t1 = time.time()
+        res = s.mpmap(PICKABLE_SLEEP_FUNC, poolSize=4).toSet()
+        dt = time.time() - t1
+        expected = set(i * i for i in xrange(N))
+        self.assertSetEqual(res, expected)
+        self.assertLessEqual(dt, 2)
+
+    def test_mpmap_nominal(self):
+        s = stream(xrange(10))
+        f = partial(pow, 2)
+        res = s.mpmap(f, poolSize=4).toSet()
+        expected = set(f(i) for i in xrange(10))
+        self.assertSetEqual(res, expected)
+
+    def test_mpmap_one_el(self):
+        s = stream([2, ])
+        f = partial(pow, 2)
+        res = s.mpmap(f, poolSize=4).toSet()
+        expected = set((4,))
+        self.assertSetEqual(res, expected)
+
+    def test_mpmap_no_el(self):
+        s = stream([])
+        res = s.mpmap(lambda x: x * x, poolSize=4).toSet()
+        expected = set()
+        self.assertSetEqual(res, expected)
+
+    def test_mpmap_None_el(self):
+        s = stream([None])
+        res = s.mpmap(PICKABLE_DUMB_FUNCTION, poolSize=4).toSet()
+        expected = set([None])
+        self.assertSetEqual(res, expected)
+
+    # ToDo: fix the Pool.imap not true lazyness
+    @unittest.skip("Pool.imap has bug. Workaround: https://stackoverflow.com/Questions/5318936/Python-Multiprocessing-Pool-Lazy-Iteration")
+    def test_mpmap_take_less(self):
+        arr = []
+
+        def m(i):
+            arr.append(i)
+            return i
+
+        s = stream(range(100)).map(m).mpmap(PICKABLE_DUMB_FUNCTION, poolSize=4, bufferSize=5).take(20)
+        res = s.toList()
+        self.assertLessEqual(len(arr), 30)
+        self.assertEqual(len(res), 20)
+
+    def test_mpmap_raises_exception(self):
+        s = stream([None])
+        f = partial(pow, 2)
+        with self.assertRaises(TypeError):
+            res = s.mpmap(f, poolSize=4).toSet()
 
     def test_unique_nominal(self):
         s = stream([1, 2, 3, 1, 2])
