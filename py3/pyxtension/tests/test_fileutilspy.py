@@ -6,8 +6,8 @@
 import io
 from unittest import TestCase, main
 
-from fileutils import Progbar
-from streams import stream
+from pyxtension.fileutils import Progbar
+from pyxtension.streams import stream
 
 __author__ = 'ASU'
 
