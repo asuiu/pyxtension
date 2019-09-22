@@ -58,15 +58,21 @@ class Progbar(object):
                  verbose: bool = False,
                  interval: float = 0.5,
                  stdout: TextIO = sys.stdout,
-                 timer: Callable[[], float] = time.time):
+                 timer: Callable[[], float] = time.time,
+                 dynamic_display: Optional[bool] = None):
         self.target = target
         self.width = width
         self.verbose = verbose
         self.interval = interval
         self.stdout = stdout
-        self._dynamic_display = ((hasattr(self.stdout, 'isatty') and
-                                  self.stdout.isatty()) or
-                                 'ipykernel' in sys.modules)
+        if dynamic_display is None:
+            self._dynamic_display = ((hasattr(self.stdout, 'isatty') and self.stdout.isatty())
+                                     or 'ipykernel' in sys.modules
+                                     or (hasattr(self.stdout, 'name')
+                                         and self.stdout.name in ('<stdout>', '<stderr>'))
+                                     )
+        else:
+            self._dynamic_display = dynamic_display
         self._total_width = 0
         self._seen_so_far = 0
         self._values = OrderedDict()
@@ -94,84 +100,83 @@ class Progbar(object):
 
         now = self._timer()
         info = ' - %.0fs' % (now - self._start)
-        if not self.verbose:
-            if (now - self._last_update < self.interval and
-                    self.target is not None and current < self.target):
-                return
+        if (now - self._last_update < self.interval and
+                self.target is not None and current < self.target):
+            return
 
-            prev_total_width = self._total_width
-            if self._dynamic_display:
-                self.stdout.write('\b' * prev_total_width)
-                self.stdout.write('\r')
-            else:
-                self.stdout.write('\n')
+        prev_total_width = self._total_width
 
-            if self.target is not None:
-                numdigits = int(floor(log10(self.target))) + 1
-                barstr = '%%%dd/%d [' % (numdigits, self.target)
-                bar = barstr % current
-                prog = float(current) / self.target
-                prog_width = int(self.width * prog)
-                if prog_width > 0:
-                    bar += ('=' * (prog_width - 1))
-                    if current < self.target:
-                        bar += '>'
-                    else:
-                        bar += '='
-                bar += ('.' * (self.width - prog_width))
-                bar += ']'
-            else:
-                bar = '%7d/Unknown' % current
-
-            self._total_width = len(bar)
-            self.stdout.write(bar)
-
-            if current:
-                time_per_unit = (now - self._start) / current
-            else:
-                time_per_unit = 0
-            if self.target is not None and current < self.target:
-                eta = time_per_unit * (self.target - current)
-                if eta > 3600:
-                    eta_format = ('%d:%02d:%02d' %
-                                  (eta // 3600, (eta % 3600) // 60, eta % 60))
-                elif eta > 60:
-                    eta_format = '%d:%02d' % (eta // 60, eta % 60)
+        if self.target is not None:
+            numdigits = int(floor(log10(self.target))) + 1
+            barstr = '%%%dd/%d [' % (numdigits, self.target)
+            bar = barstr % current
+            prog = float(current) / self.target
+            prog_width = int(self.width * prog)
+            if prog_width > 0:
+                bar += ('=' * (prog_width - 1))
+                if current < self.target:
+                    bar += '>'
                 else:
-                    eta_format = '%ds' % eta
-
-                info = ' - ETA: %s' % eta_format
-            else:
-                if time_per_unit >= 1:
-                    info += ' %.0fs/step' % time_per_unit
-                elif time_per_unit >= 1e-3:
-                    info += ' %.0fms/step' % (time_per_unit * 1e3)
-                else:
-                    info += ' %.0fus/step' % (time_per_unit * 1e6)
-
-            for k in self._values:
-                info += ' - %s:' % k
-                if isinstance(self._values[k], list):
-                    avg = self._values[k][0] / max(1, self._values[k][1])
-                    # avg = mean(        )
-                    if abs(avg) > 1e-3:
-                        info += ' %.3f' % avg
-                    else:
-                        info += ' %.3e' % avg
-                else:
-                    info += ' %s' % self._values[k]
-
-            self._total_width += len(info)
-            if prev_total_width > self._total_width:
-                info += (' ' * (prev_total_width - self._total_width))
-
-            if self.target is not None and current >= self.target:
-                info += '\n'
-
-            self.stdout.write(info)
-            self.stdout.flush()
-
+                    bar += '='
+            bar += ('.' * (self.width - prog_width))
+            bar += ']'
         else:
+            bar = '%7d/Unknown' % current
+
+        if current:
+            time_per_unit = (now - self._start) / current
+        else:
+            time_per_unit = 0
+        if self.target is not None and current < self.target:
+            eta = time_per_unit * (self.target - current)
+            if eta > 3600:
+                eta_format = ('%d:%02d:%02d' %
+                              (eta // 3600, (eta % 3600) // 60, eta % 60))
+            elif eta > 60:
+                eta_format = '%d:%02d' % (eta // 60, eta % 60)
+            else:
+                eta_format = '%ds' % eta
+
+            info = ' - ETA: %s' % eta_format
+        else:
+            if time_per_unit >= 1:
+                info += ' %.0fs/step' % time_per_unit
+            elif time_per_unit >= 1e-3:
+                info += ' %.0fms/step' % (time_per_unit * 1e3)
+            else:
+                info += ' %.0fus/step' % (time_per_unit * 1e6)
+
+        for k in self._values:
+            info += ' - %s:' % k
+            if isinstance(self._values[k], list):
+                avg = self._values[k][0] / max(1, self._values[k][1])
+                # avg = mean(        )
+                if abs(avg) > 1e-3:
+                    info += ' %.3f' % avg
+                else:
+                    info += ' %.3e' % avg
+            else:
+                info += ' %s' % self._values[k]
+
+        self._total_width += len(info)
+        if prev_total_width > self._total_width:
+            info += (' ' * (prev_total_width - self._total_width))
+
+        display_str = bar + info
+
+        if self._dynamic_display:
+            prev_total_width = self._total_width
+            self._total_width = len(display_str)
+            # ASU: if \r doesn't work, use \b - to move cursor one char back
+            display_str = '\r' + display_str + ' ' * max(0, prev_total_width - len(display_str))
+        else:
+            display_str = display_str + '\n'
+        if self.target is not None and current >= self.target:
+            display_str += '\n'
+        self.stdout.write(display_str)
+        self.stdout.flush()
+
+        if self.verbose:
             if self.target is None or current >= self.target:
                 for k in self._values:
                     info += ' - %s:' % k
@@ -181,9 +186,16 @@ class Progbar(object):
                         info += ' %.3f' % avg
                     else:
                         info += ' %.3e' % avg
-                info += '\n'
 
-                self.stdout.write(info)
+                display_str = info
+                if self._dynamic_display:
+                    prev_total_width = self._total_width
+                    self._total_width = len(display_str)
+                    # ASU: if \r doesn't work, use \b - to move cursor one char back
+                    display_str = '\r' + display_str + ' ' * max(0, prev_total_width - len(display_str))
+                else:
+                    display_str = display_str + '\n'
+                self.stdout.write(display_str)
                 self.stdout.flush()
 
         self._last_update = now
