@@ -2,7 +2,9 @@
 # coding:utf-8
 # Author: ASU --<andrei.suiu@gmail.com>
 # Purpose: utility library
+import bz2
 import gzip
+import lzma
 import sys
 import time
 
@@ -16,30 +18,25 @@ __author__ = 'ASU'
 
 
 def openByExtension(filename: str, mode: str = 'r', buffering: int = -1,
-                    compresslevel: int = 9) -> Union[TextIO, BinaryIO, GzipFile, BZ2File]:
+                    compresslevel: int = 9, **kwargs) -> Union[TextIO, BinaryIO, GzipFile, BZ2File]:
     """
     :return: Returns an opened file-like object, decompressing/compressing data depending on file extension
     """
-    m = -1
-    if 'r' in mode:
-        m = 0
-    elif 'w' in mode:
-        m = 1
-    elif 'a' in mode:
-        m = 2
-    tm = ('r', 'w', 'a')
-    bText = 't' in mode
-
     if filename.endswith('.gz'):
-        return gzip.open(filename, tm[m], compresslevel=compresslevel)
+        return gzip.open(filename, mode, compresslevel=compresslevel, **kwargs)
     elif filename.endswith('.bz2'):
-        mode = tm[m]
-        if bText: mode += 'U'
-        if buffering <= 1:
-            buffering = 0
-        return BZ2File(filename, mode, buffering=buffering, compresslevel=compresslevel)
+        return bz2.open(filename, mode, compresslevel=compresslevel, **kwargs)
+    elif filename.endswith('.xz'):
+        my_filters = [
+            {"id": lzma.FILTER_LZMA2, "preset": compresslevel | lzma.PRESET_EXTREME}
+        ]
+        return lzma.open(filename, mode=mode, filters=my_filters, **kwargs)
     else:
-        return open(filename, mode, buffering=buffering)
+        return open(filename, mode, buffering=buffering, **kwargs)
+
+
+open_by_ext = openByExtension
+smart_open = openByExtension
 
 
 class Progbar(object):
