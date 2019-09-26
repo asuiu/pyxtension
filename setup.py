@@ -10,8 +10,6 @@ from shutil import copy
 
 __author__ = 'ASU'
 
-# from distutils.core import setup  # this line broke bdist_wheel
-
 from setuptools import setup
 
 py_modules = ['Json', 'streams', 'racelib', 'fileutils', '__init__']
@@ -27,9 +25,17 @@ pyMajorVersion = str(sys.version_info[0])
 
 for fname in py_modules:
     copy(join(basedir, 'py' + pyMajorVersion, 'pyxtension', fname + '.py'), dest_package_dir)
+
+# ToDo: check if there's still BUG in twine, as if falsely reports in README.md
+#  line 34: Error: Unexpected indentation.
+
+long_description = open('README.rst', "r", encoding='utf-8').read()
+
 parameters = dict(name='pyxtension',
-                  version='1.12.6',
+                  version='1.12.7',
                   description='Extension library for Python',
+                  long_description=long_description,
+                  long_description_content_type="text/markdown",
                   author='Andrei Suiu',
                   author_email='andrei.suiu@gmail.com',
                   url='https://github.com/asuiu/pyxtension',
@@ -45,17 +51,19 @@ parameters = dict(name='pyxtension',
                       "Programming Language :: Python :: 3.7",
                       "Programming Language :: Python :: Implementation :: CPython",
                       "Programming Language :: Python :: Implementation :: PyPy", ])
-if pyMajorVersion == '2':
-    try:
-        from pip import main as pip_main
-    except ImportError:
-        from pip._internal import main as pip_main
+try:
+    from pip import main as pip_main
+except ImportError:
+    from pip._internal import main as pip_main
 
+if pyMajorVersion == '2':
     requires = ['mock']
     for reqPackage in requires:
         pip_main(['install', reqPackage])
 elif pyMajorVersion == '3':
-    pass
+    requires = ['tqdm']
+    for reqPackage in requires:
+        pip_main(['install', reqPackage])
 
 setup(**parameters)
 

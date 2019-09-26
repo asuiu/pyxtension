@@ -12,7 +12,9 @@ from bz2 import BZ2File
 from collections import OrderedDict
 from gzip import GzipFile
 from math import floor, log10
-from typing import Optional, Callable, TextIO, Any, Union, BinaryIO
+from typing import Optional, Callable, TextIO, Union, BinaryIO, TypeVar
+
+K = TypeVar('K')
 
 __author__ = 'ASU'
 
@@ -200,7 +202,7 @@ class Progbar(object):
     def add(self, n, values=None):
         self.update(self._seen_so_far + n, values)
 
-    def __call__(self, el: Any):
+    def __call__(self, el: K) -> K:
         """
         It's intended to be used from a mapper over a stream of values.
         It returns the same el

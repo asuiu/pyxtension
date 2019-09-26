@@ -28,6 +28,13 @@ izip = zip
 xrange = range
 from pyxtension.fileutils import openByExtension
 
+try:
+    from tqdm import tqdm
+except ImportError:
+    def tqdm(*args, **kws):
+        from tqdm import tqdm as tq
+        return tq(*args, **kws)
+
 __author__ = 'ASU'
 
 K = TypeVar('K')
@@ -73,6 +80,18 @@ class MapException:
         self.exc_info = exc_info
 
 
+class TqdmMapper:
+
+    def __init__(self, *args, **kwargs) -> None:
+        """
+        :param args: same args that are passed to tqdm
+        :param kwargs: same args that are passed to tqdm
+        """
+        self._tqdm = tqdm(*args, **kwargs)
+
+    def __call__(self, el: K) -> K:
+        self._tqdm.update()
+        return el
 
 
 class _IStream(Iterable[K], ABC):
@@ -654,6 +673,14 @@ class _IStream(Iterable[K], ABC):
         :rtype: stream[U]
         """
         return stream(ItrFromFunc(lambda: _IStream.__unique_generator(self, predicate)))
+
+    def tqdm(self, *args, **kwargs) -> 'stream':
+        """
+        :param args: same args that are passed to tqdm
+        :param kwargs: same args that are passed to tqdm
+        :return: self stream
+        """
+        return stream(tqdm(iterable=self, *args, **kwargs))
 
     @staticmethod
     def binaryToChunk(binaryData: bytes) -> bytes:

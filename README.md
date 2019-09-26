@@ -29,25 +29,25 @@ the hood.
 
 **Never again will you have to write code like this**:
 ```python
-		body = {
-			'query': {
-				'filtered': {
-					'query': {
-						'match': {'description': 'addictive'}
-					},
-					'filter': {
-						'term': {'created_by': 'ASU'}
-					}
-				}
-			}
-		}
+body = {
+    'query': {
+        'filtered': {
+            'query': {
+                'match': {'description': 'addictive'}
+            },
+            'filter': {
+                'term': {'created_by': 'ASU'}
+            }
+        }
+    }
+}
 ```
 
 From now on, you may simply write the following three lines:
 ```python
-        body = Json()
-		body.query.filtered.query.match.description = 'addictive'
-		body.query.filtered.filter.term.created_by = 'ASU'
+body = Json()
+body.query.filtered.query.match.description = 'addictive'
+body.query.filtered.filter.term.created_by = 'ASU'
 ```
 ### streams.py
 #### stream
@@ -408,12 +408,12 @@ mappings converted to `Json`:
 To get this recursive functionality for keys that cannot be used as attributes,
 you can replicate the behavior by using dict syntax on `Json` object::
 ```python
-    > json = Json({1: {'two': 3}})
-    > json[1].two
-    3
+> json = Json({1: {'two': 3}})
+> json[1].two
+3
 ```
 `JsonList` usage examples:
-```python
+```
 > json = Json('{"lst":[1,2,3]}')
 > type(json.lst)
 <class 'pyxtension.Json.JsonList'>
@@ -426,10 +426,10 @@ you can replicate the behavior by using dict syntax on `Json` object::
 
 Assignment as keys will still work::
 ```python
-    > json = Json({'foo': {'bar': 'baz'}})
-    > json['foo']['bar'] = 'baz'
-    > json.foo
-    {'bar': 'baz'}
+> json = Json({'foo': {'bar': 'baz'}})
+> json['foo']['bar'] = 'baz'
+> json.foo
+{'bar': 'baz'}
 ```
 
 ### License

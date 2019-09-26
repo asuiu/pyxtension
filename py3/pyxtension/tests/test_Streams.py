@@ -1,3 +1,4 @@
+import io
 import pickle
 import random
 import sys
@@ -8,7 +9,7 @@ from io import BytesIO
 from unittest.mock import MagicMock
 
 from pyxtension.Json import JsonList, Json
-from pyxtension.streams import stream, slist, sset, sdict, ItrFromFunc, defaultstreamdict
+from pyxtension.streams import stream, slist, sset, sdict, ItrFromFunc, defaultstreamdict, TqdmMapper
 
 ifilter = filter
 xrange = range
@@ -629,6 +630,84 @@ class StreamTestCase(unittest.TestCase):
         s = stream(iter(range(1, 4)))
         with self.assertRaises(TypeError):
             s.reversed().toList()
+
+    def test_len(self):
+        # On iterable as init
+        s = stream(range(1, 4))
+        with self.assertRaises(TypeError):
+            len(s)
+        self.assertEqual(3, s.size())
+        # On container as init
+        s = stream([1, 2, 3])
+        with self.assertRaises(TypeError):
+            len(s)
+
+    def test_tqdm_nominal(self):
+        N = 4
+        TM = r'(00:00|\?)'
+        s = stream(range(N))
+        out = io.StringIO()
+        self.assertListEqual(list(range(N)), s.tqdm(file=out).toList())
+        expected = rf'\r0it \[00:00, {TM}it/s\]' \
+                   rf'\r{N}it \[00:00, {TM}it/s\]\n'
+        self.assertRegex(out.getvalue(), expected)
+
+    def test_tqdm_total(self):
+        N = 4
+        s = stream(range(N))
+        FLT = r'(\d+\.\d+|\?)'
+        TM = r'(00:00|\?)'
+        out = io.StringIO()
+        self.assertListEqual(list(range(N)), s.tqdm(total=N, file=out).toList())
+        expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
+                   rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n'
+        a = rf'\r  0%|          | 0/4 [00:00<?, ?it/s]' \
+            rf'\r100%|##########| 4/4 [00:00<00:00, 4011.77it/s]\n'
+        self.assertRegex(out.getvalue(), expected)
+
+    def test_tqdm_containers(self):
+        N = 4
+        FLT = r'(\d+\.\d+|\?)'
+        TM = r'(00:00|\?)'
+        s = stream(list(range(N)))
+        out = io.StringIO()
+        self.assertListEqual(list(range(N)), s.toList().tqdm(file=out).toList())
+        expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
+                   rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n'
+        self.assertRegex(out.getvalue(), expected)
+
+        out = io.StringIO()
+        self.assertListEqual(list(range(N)), s.toSet().tqdm(file=out).toList())
+        expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
+                   rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n'
+        self.assertRegex(out.getvalue(), expected)
+
+        s = stream(((i, i + 1) for i in range(N))).toMap()
+        self.assertListEqual([i for i in range(N)], s.tqdm(file=out).toList())
+        expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
+                   rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n'
+        self.assertRegex(out.getvalue(), expected)
+
+    def test_TqdmMapper_total(self):
+        N = 4
+        FLT = r'(\d+\.\d+|\?)'
+        TM = r'(00:00|\?)'
+        s = stream(range(N))
+        out = io.StringIO()
+        self.assertListEqual(list(range(N)), s.map(TqdmMapper(total=N, file=out)).toList())
+        expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
+                   rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n'
+        self.assertRegex(out.getvalue(), expected)
+
+    def test_TqdmMapper_nominal(self):
+        N = 4
+        TM = r'(00:00|\?)'
+        s = stream(range(N))
+        out = io.StringIO()
+        self.assertListEqual(list(range(N)), s.map(TqdmMapper(file=out)).toList())
+        expected = rf'\r0it \[00:00, {TM}it/s\]' \
+                   rf'\r{N}it \[00:00, {TM}it/s\]\n'
+        self.assertRegex(out.getvalue(), expected)
 
 
 """
