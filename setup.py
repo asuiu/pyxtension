@@ -29,7 +29,7 @@ for fname in py_modules:
 # ToDo: check if there's still BUG in twine, as if falsely reports in README.md
 #  line 34: Error: Unexpected indentation.
 
-long_description = open('README.rst', "r", encoding='utf-8').read()
+long_description = open('README.rst', "rt").read()
 
 parameters = dict(name='pyxtension',
                   version='1.12.7',
