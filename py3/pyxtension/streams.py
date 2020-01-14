@@ -29,12 +29,7 @@ izip = zip
 xrange = range
 from pyxtension.fileutils import openByExtension
 
-try:
-    from tqdm import tqdm
-except ImportError:
-    def tqdm(*args, **kws):
-        from tqdm import tqdm as tq
-        return tq(*args, **kws)
+from tqdm import tqdm
 
 __author__ = 'ASU'
 
@@ -1005,6 +1000,17 @@ class sset(set, MutableSet[K], _IStream):
     def union(self, *s: Iterable[K]) -> Set[K]:
         return sset(super().union(*s))
 
+    def tqdm(self, desc: Optional[str] = None, total: Optional[int] = None, leave: bool = True,
+             file: Optional[io.TextIOWrapper] = None, ncols: Optional[int] = None, mininterval: float = 0.1,
+             maxinterval: float = 10.0, ascii: Optional[Union[str, bool]] = None, unit: str = 'it',
+             unit_scale: Optional[Union[bool, int, float]] = False, dynamic_ncols: Optional[bool] = False,
+             smoothing: Optional[float] = 0.3, initial: int = 0, position: Optional[int] = None,
+             postfix: Optional[dict] = None, gui: bool = False, **kwargs) -> 'stream[K]':
+        if total is None:
+            total = self.size()
+        return super().tqdm(desc, total, leave, file, ncols, mininterval, maxinterval, ascii, unit, unit_scale,
+                            dynamic_ncols, smoothing, initial, position, postfix, gui, **kwargs)
+
     def __and__(self, other):
         return sset(super().__and__(other))
 
@@ -1082,12 +1088,23 @@ class slist(List[K], stream):
             return stream(self) + x
         return slist(super().__add__(x))
 
+    def tqdm(self, desc: Optional[str] = None, total: Optional[int] = None, leave: bool = True,
+             file: Optional[io.TextIOWrapper] = None, ncols: Optional[int] = None, mininterval: float = 0.1,
+             maxinterval: float = 10.0, ascii: Optional[Union[str, bool]] = None, unit: str = 'it',
+             unit_scale: Optional[Union[bool, int, float]] = False, dynamic_ncols: Optional[bool] = False,
+             smoothing: Optional[float] = 0.3, initial: int = 0, position: Optional[int] = None,
+             postfix: Optional[dict] = None, gui: bool = False, **kwargs) -> 'stream[K]':
+        if total is None:
+            total = self.size()
+        return super().tqdm(desc, total, leave, file, ncols, mininterval, maxinterval, ascii, unit, unit_scale,
+                            dynamic_ncols, smoothing, initial, position, postfix, gui, **kwargs)
+
 
 class sdict(Dict[K, V], dict, _IStream):
     @property
     def _itr(self):
         return ItrFromFunc(lambda: iter(self))
-
+    
     def __init__(self, *args, **kwrds):
         dict.__init__(self, *args, **kwrds)
 
@@ -1099,17 +1116,28 @@ class sdict(Dict[K, V], dict, _IStream):
 
     def values(self) -> stream[V]:
         return stream(dict.values(self))
-
+    
     def items(self) -> stream[Tuple[K, V]]:
         return stream(dict.items(self))
-
+    
     def update(self, other=None, **kwargs) -> 'sdict[K,V]':
         dict.update(self, other, **kwargs)
         return self
-
+    
     def copy(self) -> 'sdict[K,V]':
         return sdict(self.items())
-
+    
+    def tqdm(self, desc: Optional[str] = None, total: Optional[int] = None, leave: bool = True,
+             file: Optional[io.TextIOWrapper] = None, ncols: Optional[int] = None, mininterval: float = 0.1,
+             maxinterval: float = 10.0, ascii: Optional[Union[str, bool]] = None, unit: str = 'it',
+             unit_scale: Optional[Union[bool, int, float]] = False, dynamic_ncols: Optional[bool] = False,
+             smoothing: Optional[float] = 0.3, initial: int = 0, position: Optional[int] = None,
+             postfix: Optional[dict] = None, gui: bool = False, **kwargs) -> 'stream[K]':
+        if total is None:
+            total = self.size()
+        return super().tqdm(desc, total, leave, file, ncols, mininterval, maxinterval, ascii, unit, unit_scale,
+                            dynamic_ncols, smoothing, initial, position, postfix, gui, **kwargs)
+    
     def toJson(self) -> 'sdict[K,V]':
         from pyxtension.Json import Json
         return Json(self)
