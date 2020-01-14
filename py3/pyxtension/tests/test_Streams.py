@@ -701,7 +701,7 @@ class StreamTestCase(unittest.TestCase):
 
     def test_TqdmMapper_nominal(self):
         N = 4
-        TM = r'(00:00|\?)'
+        TM = r'([\d.]+|\?)'
         s = stream(range(N))
         out = io.StringIO()
         self.assertListEqual(list(range(N)), s.map(TqdmMapper(file=out)).toList())
