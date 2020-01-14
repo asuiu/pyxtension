@@ -1,13 +1,10 @@
 #!/usr/bin/python
 # coding:utf-8
 # Author: ASU --<andrei.suiu@gmail.com>
-# Purpose: utility library
+# Purpose: utility library for Python2.x
 from operator import itemgetter
 
-try:  # in Python 3.x the cPickle do not exist anymore
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import cPickle as pickle
 
 from Queue import Queue
 import struct

@@ -1,8 +1,9 @@
 #!/usr/bin/python
 # coding:utf-8
 # Author: ASU --<andrei.suiu@gmail.com>
-# Purpose: utility library
+# Purpose: utility library for >=Python3.6
 import collections
+import io
 import itertools
 import math
 import numbers
@@ -380,7 +381,7 @@ class _IStream(Iterable[K], ABC):
         """
         return self.map(itemgetter(1))
 
-    def groupBy(self, keyfunc: Callable[[K], T]=_IDENTITY_FUNC)-> 'stream[Tuple[T,stream[K]]]':
+    def groupBy(self, keyfunc: Callable[[K], T] = _IDENTITY_FUNC) -> 'stream[Tuple[T,stream[K]]]':
         """
         groupBy([keyfunc]) -> Make an iterator that returns consecutive keys and groups from the iterable.
         The iterable needs not to be sorted on the same key function, but the keyfunction need to return hasable objects.
@@ -395,7 +396,7 @@ class _IStream(Iterable[K], ABC):
         ##for
         return stream(iter(h.items()))
 
-    def groupByToList(self, keyfunc:Callable[[K],T]=_IDENTITY_FUNC)->'stream[Tuple[T,slist[K]]]':
+    def groupByToList(self, keyfunc: Callable[[K], T] = _IDENTITY_FUNC) -> 'stream[Tuple[T,slist[K]]]':
         """
         groupBy(keyfunc]) -> create an iterator which returns
         (key, sub-iterator) grouped by each value of key(value).
@@ -403,10 +404,10 @@ class _IStream(Iterable[K], ABC):
         return stream(
             ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], slist(kv[1])))
 
-    def countByValue(self)->'sdict[K,int]':
+    def countByValue(self) -> 'sdict[K,int]':
         return sdict(collections.Counter(self))
 
-    def distinct(self)->'stream[K]':
+    def distinct(self) -> 'stream[K]':
         return self.unique()
 
     @overload
@@ -674,13 +675,78 @@ class _IStream(Iterable[K], ABC):
         """
         return stream(ItrFromFunc(lambda: _IStream.__unique_generator(self, predicate)))
 
-    def tqdm(self, *args, **kwargs) -> 'stream':
+    def tqdm(self, desc: Optional[str] = None,
+             total: Optional[int] = None,
+             leave: bool = True,
+             file: Optional[io.TextIOWrapper] = None,
+             ncols: Optional[int] = None,
+             mininterval: float = 0.1,
+             maxinterval: float = 10.0,
+             ascii: Optional[Union[str, bool]] = None,
+             unit: str = 'pcs',
+             unit_scale: Optional[Union[bool, int, float]] = False,
+             dynamic_ncols: Optional[bool] = False,
+             smoothing: Optional[float] = 0.3,
+             initial: int = 0,
+             position: Optional[int] = None,
+             postfix: Optional[dict] = None,
+             gui: bool = False,
+             **kwargs) -> 'stream[K]':
         """
-        :param args: same args that are passed to tqdm
-        :param kwargs: same args that are passed to tqdm
+        :param desc: Prefix for the progressbar.
+        :param total: The number of expected iterations. If unspecified,
+            len(iterable) is used if possible. If float("inf") or as a last
+            resort, only basic progress statistics are displayed
+            (no ETA, no progressbar).
+            If `gui` is True and this parameter needs subsequent updating,
+            specify an initial arbitrary large positive integer,
+            e.g. int(9e9).
+        :param leave: If [default: True], keeps all traces of the progressbar
+            upon termination of iteration.
+        :param file: Specifies where to output the progress messages
+            (default: sys.stderr). Uses `file.write(str)` and `file.flush()`
+            methods.  For encoding, see `write_bytes`.
+        :param ncols: The width of the entire output message. If specified,
+            dynamically resizes the progressbar to stay within this bound.
+            If unspecified, attempts to use environment width. The
+            fallback is a meter width of 10 and no limit for the counter and
+            statistics. If 0, will not print any meter (only stats).
+        :param mininterval: Minimum progress display update interval [default: 0.1] seconds.
+        :param maxinterval: Maximum progress display update interval [default: 10] seconds.
+            Automatically adjusts `miniters` to correspond to `mininterval`
+            after long display update lag. Only works if `dynamic_miniters`
+            or monitor thread is enabled.
+        :param ascii: If unspecified or False, use unicode (smooth blocks) to fill
+            the meter. The fallback is to use ASCII characters " 123456789#".
+        :param unit: String that will be used to define the unit of each iteration
+            [default: it].
+        :param unit_scale: If 1 or True, the number of iterations will be reduced/scaled
+            automatically and a metric prefix following the
+            International System of Units standard will be added
+            (kilo, mega, etc.) [default: False]. If any other non-zero
+            number, will scale `total` and `n`.
+        :param dynamic_ncols: If set, constantly alters `ncols` to the environment (allowing
+            for window resizes) [default: False].
+        :param smoothing: Exponential moving average smoothing factor for speed estimates
+            (ignored in GUI mode). Ranges from 0 (average speed) to 1
+            (current/instantaneous speed) [default: 0.3].
+        :param initial: The initial counter value. Useful when restarting a progress bar [default: 0].
+        :param position: Specify the line offset to print this bar (starting from 0)
+            Automatic if unspecified.
+            Useful to manage multiple bars at once (eg, from threads).
+        :param postfix: Specify additional stats to display at the end of the bar.
+            Calls `set_postfix(**postfix)` if possible (dict).
+        :param gui: WARNING: internal parameter - do not use.
+            Use tqdm_gui(...) instead. If set, will attempt to use
+            matplotlib animations for a graphical output [default: False].
+        :param kwargs: Params to be sent to tqdm()
         :return: self stream
         """
-        return stream(tqdm(iterable=self, *args, **kwargs))
+        return stream(tqdm(iterable=self, desc=desc, total=total, leave=leave,
+                           file=file, ncols=ncols, mininterval=mininterval, maxinterval=maxinterval,
+                           ascii=ascii, unit=unit, unit_scale=unit_scale, dynamic_ncols=dynamic_ncols, smoothing=smoothing,
+                           initial=initial, position=position, postfix=postfix,
+                           gui=gui, **kwargs))
 
     @staticmethod
     def binaryToChunk(binaryData: bytes) -> bytes:
@@ -929,6 +995,7 @@ class sset(set, MutableSet[K], _IStream):
     def discard(self, *args, **kwargs) -> 'sset[K]':
         super(sset, self).discard(*args, **kwargs)
         return self
+
     def __reversed__(self):
         raise TypeError("'sset' object is not reversible")
 

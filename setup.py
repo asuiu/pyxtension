@@ -6,11 +6,13 @@
 import os
 import sys
 from os.path import join
-from shutil import copy
+from shutil import copy, rmtree
 
 __author__ = 'ASU'
 
 from setuptools import setup
+from setuptools.command.install import install
+from wheel.bdist_wheel import bdist_wheel
 
 py_modules = ['Json', 'streams', 'racelib', 'fileutils', '__init__']
 
@@ -22,17 +24,61 @@ except os.error:
     pass
 
 pyMajorVersion = str(sys.version_info[0])
+if "--py2" in sys.argv:
+    pyMajorVersion = '2'
 
-for fname in py_modules:
-    copy(join(basedir, 'py' + pyMajorVersion, 'pyxtension', fname + '.py'), dest_package_dir)
+src_dir = join(basedir, 'py' + pyMajorVersion, 'pyxtension')
+for fname in [f for f in os.listdir(src_dir) if f.endswith(".py")]:
+    copy(join(src_dir, fname), dest_package_dir)
 
 # ToDo: check if there's still BUG in twine, as if falsely reports in README.md
 #  line 34: Error: Unexpected indentation.
 
 long_description = open('README.rst', "rt").read()
 
+install_requires = ['tqdm>=4.41.1;python_version>="3"']
+extras_require = {
+    'dev':  ['mock;python_version<"3"'],
+    'test': ['mock;python_version<"3"']
+}
+
+if pyMajorVersion == "2":
+    python_requires = '>=2.6, <3'
+elif pyMajorVersion == "3":
+    python_requires = '>=3.6, <4'
+else:
+    raise Exception("Unknown Python version")
+
+
+class InstallCommand(install, object):
+    user_options = install.user_options + [('py2', None, "Forces to build Py2 package even if run from Py3")]
+    
+    def initialize_options(self):
+        super(InstallCommand, self).initialize_options()
+        self.py2 = None
+
+
+class BdistWheelCommand(bdist_wheel, object):
+    user_options = bdist_wheel.user_options + [('py2', None, "Forces to build Py2 package even if run from Py3")]
+    
+    def initialize_options(self):
+        super(BdistWheelCommand, self).initialize_options()
+        self.py2 = None
+    
+    def finalize_options(self):
+        super(BdistWheelCommand, self).finalize_options()
+        # self.root_is_pure = False
+    
+    def get_tag(self):
+        python, abi, plat = super(BdistWheelCommand, self).get_tag()
+        # We don't contain any python source
+        if pyMajorVersion == "2":
+            python, abi = 'py2', 'none'
+        return python, abi, plat
+
+
 parameters = dict(name='pyxtension',
-                  version='1.12.7',
+                  version='1.12.8',
                   description='Extension library for Python',
                   long_description=long_description,
                   long_description_content_type="text/markdown",
@@ -40,34 +86,25 @@ parameters = dict(name='pyxtension',
                   author_email='andrei.suiu@gmail.com',
                   url='https://github.com/asuiu/pyxtension',
                   packages=['pyxtension'],
+                  python_requires=python_requires,
+                  install_requires=install_requires,
+                  extras_require=extras_require,
+                  cmdclass={
+                      'install':     InstallCommand,
+                      'bdist_wheel': BdistWheelCommand
+                  },
                   classifiers=[
                       "Development Status :: 5 - Production/Stable",
                       "Intended Audience :: Developers",
-                      "Programming Language :: Python :: 2",
                       "Programming Language :: Python :: 2.6",
                       "Programming Language :: Python :: 2.7",
-                      "Programming Language :: Python :: 3",
                       "Programming Language :: Python :: 3.6",
                       "Programming Language :: Python :: 3.7",
+                      "Programming Language :: Python :: 3.8",
                       "Programming Language :: Python :: Implementation :: CPython",
                       "Programming Language :: Python :: Implementation :: PyPy", ])
-try:
-    from pip import main as pip_main
-except ImportError:
-    from pip._internal import main as pip_main
-
-if pyMajorVersion == '2':
-    requires = ['mock']
-    for reqPackage in requires:
-        pip_main(['install', reqPackage])
-elif pyMajorVersion == '3':
-    requires = ['tqdm']
-    for reqPackage in requires:
-        pip_main(['install', reqPackage])
 
 setup(**parameters)
 
 # clean-up
-for fname in os.listdir(dest_package_dir):
-    os.unlink(join(dest_package_dir, fname))
-os.rmdir(dest_package_dir)
+rmtree(dest_package_dir)

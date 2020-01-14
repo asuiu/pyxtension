@@ -8,12 +8,11 @@ python:
   # PyPy versions
   - "pypy"
   # - "pypy3.5" - incompatible
-  # - "pypy3.6" - unsupported by Travis
+  - "pypy3"
 before_script: pip install coveralls
 install:
-  - "python setup.py install"
+  - "pip install ".[test]"
 script:
-  - "python run_tests.py"
   - "python install_test.py"
   - "coverage run --branch --include=./py2/pyxtension/Json.py,./py2/pyxtension/streams.py --omit=./py2/pyxtension/tests/* run_tests.py"
 after_success:

@@ -1,5 +1,4 @@
-python setup.py sdist bdist_wheel
-echo "ASU: just copy ./py2 and ./py3 directories into generated dist/*.tar.gz, and don't forget to bump the version, exclude .idea & tests"
-echo "ASU: Wheel for Py3 works"
-pause "Press enter to continue"
-twine upload dist/* --verbose
+del ./dist/*.whl
+echo "Use --py2 option to build&upload py2 version"
+python setup.py bdist_wheel %*
+twine upload dist/*.whl --verbose
