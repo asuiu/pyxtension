@@ -13,7 +13,7 @@ before_script: pip install coveralls
 install:
   - "pip install '.[test]'"
 script:
-  - "python install_test.py"
+  - "python run_test.py"
   - "coverage run --branch --include=./py2/pyxtension/Json.py,./py2/pyxtension/streams.py --omit=./py2/pyxtension/tests/* run_tests.py"
 after_success:
   - coveralls
