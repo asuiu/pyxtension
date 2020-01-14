@@ -683,7 +683,7 @@ class _IStream(Iterable[K], ABC):
              mininterval: float = 0.1,
              maxinterval: float = 10.0,
              ascii: Optional[Union[str, bool]] = None,
-             unit: str = 'pcs',
+             unit: str = 'it',
              unit_scale: Optional[Union[bool, int, float]] = False,
              dynamic_ncols: Optional[bool] = False,
              smoothing: Optional[float] = 0.3,
