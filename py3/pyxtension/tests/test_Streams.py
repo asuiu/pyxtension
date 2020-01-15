@@ -644,14 +644,14 @@ class StreamTestCase(unittest.TestCase):
 
     def test_tqdm_nominal(self):
         N = 4
-        TM = r'(00:00|\?)'
+        FLT = r'(\d+\.\d+|\?)'
         PYPY3_ANOMALY = "\x1b\[A\x1b\[A"
         s = stream(range(N))
         out = io.StringIO()
         self.assertListEqual(list(range(N)), s.tqdm(file=out).toList())
-        expected = (rf'\r0it \[00:00, {TM}it/s\]'
+        expected = (rf'\r0it \[00:00, {FLT}it/s\]'
                     rf'({PYPY3_ANOMALY})?'
-                    rf'\r{N}it \[00:00, {TM}it/s\]\n')
+                    rf'\r{N}it \[00:00, {FLT}it/s\]\n')
         self.assertRegex(out.getvalue(), expected)
 
     def test_tqdm_total(self):
@@ -679,17 +679,19 @@ class StreamTestCase(unittest.TestCase):
                     rf'({PYPY3_ANOMALY})?'
                     rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n')
         self.assertRegex(out.getvalue(), expected)
-    
+
         out = io.StringIO()
         self.assertListEqual(list(range(N)), s.toSet().tqdm(file=out).toList())
-        expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
-                   rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n'
+        expected = (rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]'
+                    rf'({PYPY3_ANOMALY})?'
+                    rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n')
         self.assertRegex(out.getvalue(), expected)
-    
+
         s = stream(((i, i + 1) for i in range(N))).toMap()
         self.assertListEqual([i for i in range(N)], s.tqdm(file=out).toList())
-        expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
-                   rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n'
+        expected = (rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]'
+                    rf'({PYPY3_ANOMALY})?'
+                    rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n')
         self.assertRegex(out.getvalue(), expected)
 
     def test_TqdmMapper_total(self):
