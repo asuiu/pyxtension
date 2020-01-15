@@ -645,11 +645,13 @@ class StreamTestCase(unittest.TestCase):
     def test_tqdm_nominal(self):
         N = 4
         TM = r'(00:00|\?)'
+        PYPY3_ANOMALY = "\x1b\[A\x1b\[A"
         s = stream(range(N))
         out = io.StringIO()
         self.assertListEqual(list(range(N)), s.tqdm(file=out).toList())
-        expected = rf'\r0it \[00:00, {TM}it/s\]' \
-                   rf'\r{N}it \[00:00, {TM}it/s\]\n'
+        expected = (rf'\r0it \[00:00, {TM}it/s\]'
+                    rf'({PYPY3_ANOMALY})?'
+                    rf'\r{N}it \[00:00, {TM}it/s\]\n')
         self.assertRegex(out.getvalue(), expected)
 
     def test_tqdm_total(self):
@@ -657,31 +659,33 @@ class StreamTestCase(unittest.TestCase):
         s = stream(range(N))
         FLT = r'(\d+\.\d+|\?)'
         TM = r'(00:00|\?)'
+        PYPY3_ANOMALY = "\x1b\[A\x1b\[A"
         out = io.StringIO()
         self.assertListEqual(list(range(N)), s.tqdm(total=N, file=out).toList())
-        expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
-                   rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n'
-        a = rf'\r  0%|          | 0/4 [00:00<?, ?it/s]' \
-            rf'\r100%|##########| 4/4 [00:00<00:00, 4011.77it/s]\n'
+        expected = (rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]'
+                    rf'({PYPY3_ANOMALY})?'
+                    rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n')
         self.assertRegex(out.getvalue(), expected)
 
     def test_tqdm_containers(self):
         N = 4
         FLT = r'(\d+\.\d+|\?)'
         TM = r'(00:00|\?)'
+        PYPY3_ANOMALY = "\x1b\[A\x1b\[A"
         s = stream(list(range(N)))
         out = io.StringIO()
         self.assertListEqual(list(range(N)), s.toList().tqdm(file=out).toList())
-        expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
-                   rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n'
+        expected = (rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]'
+                    rf'({PYPY3_ANOMALY})?'
+                    rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n')
         self.assertRegex(out.getvalue(), expected)
-
+    
         out = io.StringIO()
         self.assertListEqual(list(range(N)), s.toSet().tqdm(file=out).toList())
         expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
                    rf'\r100%\|##########\| {N}/{N} \[00:00<{TM}, {FLT}it/s\]\n'
         self.assertRegex(out.getvalue(), expected)
-
+    
         s = stream(((i, i + 1) for i in range(N))).toMap()
         self.assertListEqual([i for i in range(N)], s.tqdm(file=out).toList())
         expected = rf'\r  0%\|          \| 0/{N} \[00:00<\?, \?it/s\]' \
