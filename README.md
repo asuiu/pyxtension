@@ -4,6 +4,13 @@
 
 [pyxtension](https://github.com/asuiu/pyxtension) is a pure Python GNU-licensed library that includes Scala-like streams, Json with attribute access syntax, and other common-use stuff.
 
+Note:
+
+**Drop support & maintenance for Python 2.x version.**
+ Although Py2 version will remain in the repository, I won't update PyPi package, so the last Py2 supported version of the `pyxtension` will remain `1.12.7`
+
+Starting with `1.13.0` I've migrated the packaging & distributing method to [Wheel](https://pythonwheels.com/).
+      
 ## Installation
 ```
 pip install pyxtension

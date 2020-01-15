@@ -78,7 +78,7 @@ class BdistWheelCommand(bdist_wheel, object):
 
 
 parameters = dict(name='pyxtension',
-                  version='1.12.8',
+                  version='1.13.0',
                   description='Extension library for Python',
                   long_description=long_description,
                   long_description_content_type="text/markdown",
