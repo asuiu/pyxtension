@@ -33,35 +33,35 @@ from tqdm import tqdm
 
 __author__ = 'ASU'
 
-K = TypeVar('K')
-V = TypeVar('V')
-T = TypeVar('T')
-T_co = TypeVar('T_co', covariant=True)
+_K = TypeVar('_K')
+_V = TypeVar('_V')
+_T = TypeVar('_T')
+_T_co = TypeVar('_T_co', covariant=True)
 
-_IDENTITY_FUNC: Callable[[T], T] = lambda _: _
+_IDENTITY_FUNC: Callable[[_T], _T] = lambda _: _
 
 
-class ItrFromFunc(Iterable[K]):
-    def __init__(self, f: Callable[[], Iterable[K]]):
+class ItrFromFunc(Iterable[_K]):
+    def __init__(self, f: Callable[[], Iterable[_K]]):
         if callable(f):
             self._f = f
         else:
             raise TypeError(
                 "Argument f to %s should be callable, but f.__class__=%s" % (str(self.__class__), str(f.__class__)))
 
-    def __iter__(self) -> Iterator[T_co]:
+    def __iter__(self) -> Iterator[_T_co]:
         return iter(self._f())
 
 
-class CallableGeneratorContainer(Callable[[], K]):
-    def __init__(self, iterableFunctions: Iterable[ItrFromFunc[K]]):
+class CallableGeneratorContainer(Callable[[], _K]):
+    def __init__(self, iterableFunctions: Iterable[ItrFromFunc[_K]]):
         self._ifs = iterableFunctions
 
-    def __call__(self) -> Generator[K, None, None]:
+    def __call__(self) -> Generator[_K, None, None]:
         return iteratorJoiner(self._ifs)
 
 
-def iteratorJoiner(itrIterables: List[ItrFromFunc[K]]) -> Generator[K, None, None]:
+def iteratorJoiner(itrIterables: List[ItrFromFunc[_K]]) -> Generator[_K, None, None]:
     for i in itrIterables:
         for obj in i:
             yield obj
@@ -85,12 +85,12 @@ class TqdmMapper:
         """
         self._tqdm = tqdm(*args, **kwargs)
 
-    def __call__(self, el: K) -> K:
+    def __call__(self, el: _K) -> _K:
         self._tqdm.update()
         return el
 
 
-class _IStream(Iterable[K], ABC):
+class _IStream(Iterable[_K], ABC):
     @staticmethod
     def __fastmap_thread(f, qin, qout):
         while True:
@@ -119,7 +119,7 @@ class _IStream(Iterable[K], ABC):
             except:
                 qout.put(MapException(sys.exc_info()))
 
-    def __fastmap_generator(self, f: Callable[[K], V], poolSize: int, bufferSize: int):
+    def __fastmap_generator(self, f: Callable[[_K], _V], poolSize: int, bufferSize: int):
         qin = Queue(bufferSize)
         qout = Queue(max(bufferSize, poolSize + 1))  # max() is needed to not block when exiting
 
@@ -168,7 +168,7 @@ class _IStream(Iterable[K], ABC):
                 t.join()
 
     @staticmethod
-    def __fastFlatMap_input_thread(itr: Iterator[K], qin: Queue):
+    def __fastFlatMap_input_thread(itr: Iterator[_K], qin: Queue):
         while 1:
             try:
                 el = next(itr)
@@ -217,14 +217,14 @@ class _IStream(Iterable[K], ABC):
             else:
                 yield newEl
 
-    def __mp_pool_generator(self, f: Callable[[K], V], poolSize: int, bufferSize: int) -> Generator[V, None, None]:
+    def __mp_pool_generator(self, f: Callable[[_K], _V], poolSize: int, bufferSize: int) -> Generator[_V, None, None]:
         p = Pool(poolSize)
         for el in p.imap(f, self, chunksize=bufferSize):
             yield el
         p.close()
         p.join()
 
-    def __mp_fast_pool_generator(self, f: Callable[[K], V], poolSize: int, bufferSize: int) -> Generator[V, None, None]:
+    def __mp_fast_pool_generator(self, f: Callable[[_K], _V], poolSize: int, bufferSize: int) -> Generator[_V, None, None]:
         p = Pool(poolSize)
         try:
             for el in p.imap_unordered(f, iter(self), chunksize=bufferSize):
@@ -244,10 +244,10 @@ class _IStream(Iterable[K], ABC):
                 st.add(m_el)
                 yield el
 
-    def map(self, f: Callable[[K], V]) -> 'stream[V]':
+    def map(self, f: Callable[[_K], _V]) -> 'stream[_V]':
         return stream(ItrFromFunc(lambda: map(f, self)))
 
-    def mpmap(self, f: Callable[[K], V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[V]':
+    def mpmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[_V]':
         """
         Parallel ordered map using multiprocessing.Pool.imap
         :param poolSize: number of processes in Pool
@@ -265,7 +265,7 @@ class _IStream(Iterable[K], ABC):
 
         return stream(self.__mp_pool_generator(f, poolSize, bufferSize))
 
-    def mpfastmap(self, f: Callable[[K], V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[V]':
+    def mpfastmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[_V]':
         """
         Parallel unordered map using multiprocessing.Pool.imap_unordered
         :param poolSize: number of processes in Pool
@@ -283,7 +283,7 @@ class _IStream(Iterable[K], ABC):
 
         return stream(self.__mp_fast_pool_generator(f, poolSize, bufferSize))
 
-    def fastmap(self, f: Callable[[K], V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[V]':
+    def fastmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[_V]':
         """
         Parallel unordered map using multithreaded pool.
         It spawns at most poolSize threads and applies the f function.
@@ -303,8 +303,8 @@ class _IStream(Iterable[K], ABC):
         return stream(ItrFromFunc(lambda: self.__fastmap_generator(f, poolSize, bufferSize)))
 
     # ToDo - add fastFlatMap to Python 2.x version
-    def fastFlatMap(self, predicate: Callable[[K], Iterable[V]] = _IDENTITY_FUNC, poolSize: int = cpu_count(),
-                    bufferSize: Optional[int] = None) -> 'stream[V]':
+    def fastFlatMap(self, predicate: Callable[[_K], Iterable[_V]] = _IDENTITY_FUNC, poolSize: int = cpu_count(),
+                    bufferSize: Optional[int] = None) -> 'stream[_V]':
         if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:
             raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
         elif poolSize == 1:
@@ -315,16 +315,16 @@ class _IStream(Iterable[K], ABC):
             raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
         return stream(ItrFromFunc(lambda: self.__fastFlatMap_generator(predicate, poolSize, bufferSize)))
 
-    def enumerate(self) -> 'stream[Tuple[int,K]]':
+    def enumerate(self) -> 'stream[Tuple[int,_K]]':
         return stream(zip(range(0, sys.maxsize), self))
 
     @classmethod
-    def __flatMapGenerator(cls, itr: Iterable[V], f: Callable[[V], Iterable[T]]) -> Generator[T, None, None]:
+    def __flatMapGenerator(cls, itr: Iterable[_V], f: Callable[[_V], Iterable[_T]]) -> Generator[_T, None, None]:
         for i in itr:
             for j in f(i):
                 yield j
 
-    def flatMap(self, predicate: Callable[[K], Iterable[V]] = _IDENTITY_FUNC) -> 'stream[V]':
+    def flatMap(self, predicate: Callable[[_K], Iterable[_V]] = _IDENTITY_FUNC) -> 'stream[_V]':
         """
         :param predicate: predicate is a function that will receive elements of self collection and return an iterable
             By default predicate is an identity function
@@ -332,13 +332,13 @@ class _IStream(Iterable[K], ABC):
         """
         return stream(ItrFromFunc(lambda: self.__class__.__flatMapGenerator(self, predicate)))
 
-    def filter(self, predicate: Optional[Callable[[K], bool]] = None) -> 'stream[K]':
+    def filter(self, predicate: Optional[Callable[[_K], bool]] = None) -> 'stream[_K]':
         """
         :param predicate: If predicate is None, return the items that are true.
         """
         return stream(ItrFromFunc(lambda: filter(predicate, self)))
 
-    def reversed(self) -> 'stream[K]':
+    def reversed(self) -> 'stream[_K]':
         try:
             return self.__reversed__()
         except TypeError:
@@ -346,7 +346,7 @@ class _IStream(Iterable[K], ABC):
         except AttributeError:
             raise TypeError("Can not reverse stream")
 
-    def exists(self, f: Callable[[K], bool]) -> bool:
+    def exists(self, f: Callable[[_K], bool]) -> bool:
         """
         Tests whether a predicate holds for some of the elements of this sequence.
         """
@@ -355,28 +355,28 @@ class _IStream(Iterable[K], ABC):
                 return True
         return False
 
-    def keyBy(self, keyfunc: Callable[[K], V] = _IDENTITY_FUNC) -> 'stream[Tuple[K,V]]':
+    def keyBy(self, keyfunc: Callable[[_K], _V] = _IDENTITY_FUNC) -> 'stream[Tuple[_K,_V]]':
         """
         :param keyfunc: function to map values to keys
         :return: stream of Key, Value pairs
         """
         return self.map(lambda h: (keyfunc(h), h))
 
-    def keystream(self: 'stream[Tuple[T,V]]') -> 'stream[T]':
+    def keystream(self: 'stream[Tuple[_T,_V]]') -> 'stream[_T]':
         """
         Applies only on streams of 2-uples
         :return: stream consisted of first element of tuples
         """
         return self.map(itemgetter(0))
 
-    def values(self: 'stream[Tuple[T,V]]') -> 'stream[V]':
+    def values(self: 'stream[Tuple[_T,_V]]') -> 'stream[_V]':
         """
         Applies only on streams of 2-uples
         :return: stream consisted of second element of tuples
         """
         return self.map(itemgetter(1))
 
-    def groupBy(self, keyfunc: Callable[[K], T] = _IDENTITY_FUNC) -> 'stream[Tuple[T,stream[K]]]':
+    def groupBy(self, keyfunc: Callable[[_K], _T] = _IDENTITY_FUNC) -> 'stream[Tuple[_T,stream[_K]]]':
         """
         groupBy([keyfunc]) -> Make an iterator that returns consecutive keys and groups from the iterable.
         The iterable needs not to be sorted on the same key function, but the keyfunction need to return hasable objects.
@@ -391,7 +391,7 @@ class _IStream(Iterable[K], ABC):
         ##for
         return stream(iter(h.items()))
 
-    def groupByToList(self, keyfunc: Callable[[K], T] = _IDENTITY_FUNC) -> 'stream[Tuple[T,slist[K]]]':
+    def groupByToList(self, keyfunc: Callable[[_K], _T] = _IDENTITY_FUNC) -> 'stream[Tuple[_T,slist[_K]]]':
         """
         groupBy(keyfunc]) -> create an iterator which returns
         (key, sub-iterator) grouped by each value of key(value).
@@ -399,30 +399,30 @@ class _IStream(Iterable[K], ABC):
         return stream(
             ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], slist(kv[1])))
 
-    def countByValue(self) -> 'sdict[K,int]':
+    def countByValue(self) -> 'sdict[_K,int]':
         return sdict(collections.Counter(self))
 
-    def distinct(self) -> 'stream[K]':
+    def distinct(self) -> 'stream[_K]':
         return self.unique()
 
     @overload
-    def reduce(self, f: Callable[[K, K], K], init: Optional[K] = None) -> K:
+    def reduce(self, f: Callable[[_K, _K], _K], init: Optional[_K] = None) -> _K:
         ...
 
     @overload
-    def reduce(self, f: Callable[[T, K], T], init: T = None) -> T:
+    def reduce(self, f: Callable[[_T, _K], _T], init: _T = None) -> _T:
         ...
 
     @overload
-    def reduce(self, f: Callable[[Union[K, T], K], T], init: Optional[T] = None) -> T:
+    def reduce(self, f: Callable[[Union[_K, _T], _K], _T], init: Optional[_T] = None) -> _T:
         ...
 
     @overload
-    def reduce(self, f: Callable[[Union[K, T], K], T], init: Optional[K] = None) -> T:
+    def reduce(self, f: Callable[[Union[_K, _T], _K], _T], init: Optional[_K] = None) -> _T:
         ...
 
     @overload
-    def reduce(self, f: Callable[[T, K], T], init: T = None) -> T:
+    def reduce(self, f: Callable[[_T, _K], _T], init: _T = None) -> _T:
         ...
 
     def reduce(self, f, init=None):
@@ -431,19 +431,19 @@ class _IStream(Iterable[K], ABC):
         else:
             return reduce(f, self, init)
 
-    def toSet(self) -> 'sset[K]':
+    def toSet(self) -> 'sset[_K]':
         return sset(self)
 
-    def toList(self) -> 'slist[K]':
+    def toList(self) -> 'slist[_K]':
         return slist(self)
 
     def sorted(self, key=None, reverse=False):
         return slist(sorted(self, key=key, reverse=reverse))
 
-    def toMap(self: 'stream[Tuple[T,V]]') -> 'sdict[T,V]':
+    def toMap(self: 'stream[Tuple[_T,_V]]') -> 'sdict[_T,_V]':
         return sdict(self)
 
-    def toSumCounter(self: 'stream[Tuple[T,V]]') -> 'sdict[T,V]]':
+    def toSumCounter(self: 'stream[Tuple[_T,_V]]') -> 'sdict[_T,_V]]':
         """
         Elements should be tuples (T, V) where V can be summed
         :return: sdict on stream elements
@@ -462,11 +462,11 @@ class _IStream(Iterable[K], ABC):
         return JsonList(self)
 
     @overload
-    def __getitem__(self, i: slice) -> 'stream[K]':
+    def __getitem__(self, i: slice) -> 'stream[_K]':
         ...
 
     @overload
-    def __getitem__(self, i: int) -> K:
+    def __getitem__(self, i: int) -> _K:
         ...
 
     def __getitem__(self, i: Union[slice, int]):
@@ -482,11 +482,11 @@ class _IStream(Iterable[K], ABC):
 
     def __getslice(self, start: Optional[int] = None,
                    stop: Optional[int] = None,
-                   step: Optional[int] = None) -> 'stream[K]':
+                   step: Optional[int] = None) -> 'stream[_K]':
         # ToDo:fix this for cases where self._itr is generator from fastmap(), so have to be closed()
         return stream(ItrFromFunc(lambda: itertools.islice(self, start, stop, step)))
 
-    def __add__(self, other) -> 'stream[K]':
+    def __add__(self, other) -> 'stream[_K]':
         if not isinstance(other, ItrFromFunc):
             othItr = ItrFromFunc(lambda: other)
         else:
@@ -497,7 +497,7 @@ class _IStream(Iterable[K], ABC):
             i = ItrFromFunc(lambda: self._itr)
         return stream(ItrFromFunc(CallableGeneratorContainer((i, othItr))))
 
-    def __iadd__(self, other) -> 'stream[K]':
+    def __iadd__(self, other) -> 'stream[_K]':
         if not isinstance(other, ItrFromFunc):
             othItr = ItrFromFunc(lambda: other)
         else:
@@ -517,7 +517,7 @@ class _IStream(Iterable[K], ABC):
         except:
             return sum(1 for i in iter(self))
 
-    def join(self, f: Callable[[K], V] = None) -> Union[K, str]:
+    def join(self, f: Callable[[_K], _V] = None) -> Union[_K, str]:
         if f is None:
             return ''.join(self)
         elif isinstance(f, str):
@@ -540,7 +540,7 @@ class _IStream(Iterable[K], ABC):
         return self.join(c)
 
     # ToDo - add this fix to Python 2.7
-    def take(self, n: int) -> 'stream[K]':
+    def take(self, n: int) -> 'stream[_K]':
         def gen(other_gen: GeneratorType, n):
             count = 0
             while count < n:
@@ -559,8 +559,8 @@ class _IStream(Iterable[K], ABC):
             return self[:n]
 
     # ToDo: add tests for takeWhile
-    def takeWhile(self, predicate: Callable[[K], bool]) -> 'stream[K]':
-        def gen(other_gen: Union[GeneratorType, Iterable[K]], pred: Callable[[K], bool]):
+    def takeWhile(self, predicate: Callable[[_K], bool]) -> 'stream[_K]':
+        def gen(other_gen: Union[GeneratorType, Iterable[_K]], pred: Callable[[_K], bool]):
             isGen = True
             if not isinstance(other_gen, GeneratorType):
                 isGen = False
@@ -578,16 +578,16 @@ class _IStream(Iterable[K], ABC):
 
         return stream(gen(self._itr, predicate))
 
-    def head(self) -> K:
+    def head(self) -> _K:
         return next(iter(self))
 
     def sum(self) -> numbers.Real:
         return sum(self)
 
-    def min(self, key: Callable[[K], V] = _IDENTITY_FUNC) -> V:
+    def min(self, key: Callable[[_K], _V] = _IDENTITY_FUNC) -> _V:
         return min(self, key=key)
 
-    def min_default(self, default: T, key: Callable[[K], V] = _IDENTITY_FUNC) -> Union[V, T]:
+    def min_default(self, default: _T, key: Callable[[_K], _V] = _IDENTITY_FUNC) -> Union[_V, _T]:
         """
         :param default: returned if there's no minimum in stream (ie empty stream)
         :param key: the same meaning as used for the builtin min()
@@ -600,10 +600,10 @@ class _IStream(Iterable[K], ABC):
             else:
                 raise
 
-    def max(self, key: Callable[[K], V] = _IDENTITY_FUNC) -> V:
+    def max(self, key: Callable[[_K], _V] = _IDENTITY_FUNC) -> _V:
         return max(self, key=key)
 
-    def maxes(self, key: Callable[[K], V] = _IDENTITY_FUNC) -> 'slist[V]':
+    def maxes(self, key: Callable[[_K], _V] = _IDENTITY_FUNC) -> 'slist[_V]':
         i = iter(self)
         aMaxes = slist([next(i)])
         mval = key(aMaxes[0])
@@ -616,7 +616,7 @@ class _IStream(Iterable[K], ABC):
                 aMaxes.append(v)
         return aMaxes
 
-    def mins(self, key: Callable[[K], V] = _IDENTITY_FUNC) -> 'slist[V]':
+    def mins(self, key: Callable[[_K], _V] = _IDENTITY_FUNC) -> 'slist[_V]':
         i = iter(self)
         aMaxes = slist([next(i)])
         mval = key(aMaxes[0])
@@ -658,10 +658,10 @@ class _IStream(Iterable[K], ABC):
             raise ValueError('Mean requires at least one data point')
         return sm / float(n)
 
-    def zip(self) -> 'stream[V]':
+    def zip(self) -> 'stream[_V]':
         return stream(zip(*(self.toList())))
 
-    def unique(self, predicate: Callable[[K], V] = _IDENTITY_FUNC):
+    def unique(self, predicate: Callable[[_K], _V] = _IDENTITY_FUNC):
         """
         The stream items should be hashable and comparable.
         :param predicate: optional, maps the elements to comparable objects
@@ -686,7 +686,7 @@ class _IStream(Iterable[K], ABC):
              position: Optional[int] = None,
              postfix: Optional[dict] = None,
              gui: bool = False,
-             **kwargs) -> 'stream[K]':
+             **kwargs) -> 'stream[_K]':
         """
         :param desc: Prefix for the progressbar.
         :param total: The number of expected iterations. If unspecified,
@@ -767,7 +767,7 @@ class _IStream(Iterable[K], ABC):
                 stream.binaryToChunk):
             fileStream.write(el)
 
-    def dumpPickledToWriter(self, writer: Callable[[bytes], T]) -> None:
+    def dumpPickledToWriter(self, writer: Callable[[bytes], _T]) -> None:
         '''
         :param writer: should be binary output callable stream
         '''
@@ -778,7 +778,7 @@ class _IStream(Iterable[K], ABC):
     def _picklePack(el) -> bytes:
         return stream.binaryToChunk(pickle.dumps(el, pickle.HIGHEST_PROTOCOL))
 
-    def exceptIndexes(self, *indexes: List[int]) -> 'stream[K]':
+    def exceptIndexes(self, *indexes: List[int]) -> 'stream[_K]':
         """
         Doesn't support negative indexes as the stream doesn't have a length
         :return: the stream with filtered out elements on <indexes> positions
@@ -795,14 +795,14 @@ class _IStream(Iterable[K], ABC):
         return stream(ItrFromFunc(lambda: indexIgnorer(indexSet, self)))
 
 
-class stream(_IStream, Iterable[K]):
-    def __init__(self, itr: Optional[Iterator[K]] = None):
+class stream(_IStream, Iterable[_K]):
+    def __init__(self, itr: Optional[Iterator[_K]] = None):
         if itr is None:
             self._itr = []
         else:
             self._itr = itr
 
-    def __iter__(self) -> Iterator[K]:
+    def __iter__(self) -> Iterator[_K]:
         return iter(self._itr)
 
     def __repr__(self):
@@ -869,7 +869,7 @@ class stream(_IStream, Iterable[K]):
     @staticmethod
     def readFromBinaryChunkStream(readStream: Union[BinaryIO, str],
                                   format: str = "<L",
-                                  statHandler: Optional[Callable[[int, int], None]] = None) -> 'stream[V]':
+                                  statHandler: Optional[Callable[[int, int], None]] = None) -> 'stream[_V]':
         '''
         :param file: should be path or binary file stream
         :param statHandler: statistics handler, will be called before every yield with a tuple (n,size)
@@ -880,7 +880,7 @@ class stream(_IStream, Iterable[K]):
 
     @staticmethod
     def loadFromPickled(file: Union[BinaryIO, str],
-                        format: str = "<L", statHandler: Optional[Callable[[int, int], None]] = None) -> 'stream[V]':
+                        format: str = "<L", statHandler: Optional[Callable[[int, int], None]] = None) -> 'stream[_V]':
         '''
         :param file: should be path or binary file stream
         :param statHandler: statistics handler, will be called before every yield with a tuple (n,size)
@@ -935,18 +935,18 @@ class AbstractSynchronizedBufferedStream(stream):
 
 
 class SynchronizedBufferedStream(AbstractSynchronizedBufferedStream):
-    def __init__(self, iteratorOverBuffers: 'Iterator[slist[T]]'):
+    def __init__(self, iteratorOverBuffers: 'Iterator[slist[_T]]'):
         self.__iteratorOverBuffers = iter(iteratorOverBuffers)
         super(SynchronizedBufferedStream, self).__init__()
 
-    def _getNextBuffer(self) -> 'slist[T]':
+    def _getNextBuffer(self) -> 'slist[_T]':
         try:
             return next(self.__iteratorOverBuffers)
         except StopIteration:
             return slist()
 
 
-class sset(set, MutableSet[K], _IStream):
+class sset(set, MutableSet[_K], _IStream):
     @property
     def _itr(self):
         return ItrFromFunc(lambda: iter(self))
@@ -958,46 +958,46 @@ class sset(set, MutableSet[K], _IStream):
         return set.__iter__(self)
 
     # Below methods enable chaining and lambda using
-    def update(self, *args, **kwargs) -> 'sset[K]':
+    def update(self, *args, **kwargs) -> 'sset[_K]':
         # ToDo: Add option to update with iterables, as set.update supports only other set
         set.update(self, *args, **kwargs)
         return self
 
-    def intersection_update(self, *args, **kwargs) -> 'sset[K]':
+    def intersection_update(self, *args, **kwargs) -> 'sset[_K]':
         set.intersection_update(self, *args, **kwargs)
         return self
 
-    def difference_update(self, *args, **kwargs) -> 'sset[K]':
+    def difference_update(self, *args, **kwargs) -> 'sset[_K]':
         set.difference_update(self, *args, **kwargs)
         return self
 
-    def symmetric_difference_update(self, *args, **kwargs) -> 'sset[K]':
+    def symmetric_difference_update(self, *args, **kwargs) -> 'sset[_K]':
         super(sset, self).symmetric_difference_update(*args, **kwargs)
         return self
 
-    def clear(self, *args, **kwargs) -> 'sset[K]':
+    def clear(self, *args, **kwargs) -> 'sset[_K]':
         set.clear(self, *args, **kwargs)
         return self
 
-    def remove(self, *args, **kwargs) -> 'sset[K]':
+    def remove(self, *args, **kwargs) -> 'sset[_K]':
         super(sset, self).remove(*args, **kwargs)
         return self
 
-    def add(self, *args, **kwargs) -> 'sset[K]':
+    def add(self, *args, **kwargs) -> 'sset[_K]':
         super(sset, self).add(*args, **kwargs)
         return self
 
-    def discard(self, *args, **kwargs) -> 'sset[K]':
+    def discard(self, *args, **kwargs) -> 'sset[_K]':
         super(sset, self).discard(*args, **kwargs)
         return self
 
     def __reversed__(self):
         raise TypeError("'sset' object is not reversible")
 
-    def __or__(self, s: AbstractSet[V]) -> Set[Union[K, V]]:
+    def __or__(self, s: AbstractSet[_V]) -> Set[Union[_K, _V]]:
         return sset(super().__or__(s))
 
-    def union(self, *s: Iterable[K]) -> Set[K]:
+    def union(self, *s: Iterable[_K]) -> Set[_K]:
         return sset(super().union(*s))
 
     def tqdm(self, desc: Optional[str] = None, total: Optional[int] = None, leave: bool = True,
@@ -1005,7 +1005,7 @@ class sset(set, MutableSet[K], _IStream):
              maxinterval: float = 10.0, ascii: Optional[Union[str, bool]] = None, unit: str = 'it',
              unit_scale: Optional[Union[bool, int, float]] = False, dynamic_ncols: Optional[bool] = False,
              smoothing: Optional[float] = 0.3, initial: int = 0, position: Optional[int] = None,
-             postfix: Optional[dict] = None, gui: bool = False, **kwargs) -> 'stream[K]':
+             postfix: Optional[dict] = None, gui: bool = False, **kwargs) -> 'stream[_K]':
         if total is None:
             total = self.size()
         return super().tqdm(desc, total, leave, file, ncols, mininterval, maxinterval, ascii, unit, unit_scale,
@@ -1014,23 +1014,23 @@ class sset(set, MutableSet[K], _IStream):
     def __and__(self, other):
         return sset(super().__and__(other))
 
-    def intersection(self, *s: Iterable[object]) -> Set[K]:
+    def intersection(self, *s: Iterable[object]) -> Set[_K]:
         return sset(super().intersection(*s))
 
-    def __sub__(self, s: AbstractSet[object]) -> Set[K]:
+    def __sub__(self, s: AbstractSet[object]) -> Set[_K]:
         return sset(super().__sub__(s))
 
-    def __xor__(self, s: AbstractSet[V]) -> Set[Union[K, V]]:
+    def __xor__(self, s: AbstractSet[_V]) -> Set[Union[_K, _V]]:
         return sset(super().__xor__(s))
 
-    def difference(self, *s: Iterable[V]) -> Set[Union[K, V]]:
+    def difference(self, *s: Iterable[_V]) -> Set[Union[_K, _V]]:
         return sset(super().difference(*s))
 
-    def symmetric_difference(self, s: Iterable[V]) -> Set[Union[K, V]]:
+    def symmetric_difference(self, s: Iterable[_V]) -> Set[Union[_K, _V]]:
         return sset(super().symmetric_difference(s))
 
 
-class slist(List[K], stream):
+class slist(List[_K], stream):
     @property
     def _itr(self):
         return ItrFromFunc(lambda: iter(self))
@@ -1038,29 +1038,29 @@ class slist(List[K], stream):
     def __init__(self, *args, **kwrds):
         list.__init__(self, *args, **kwrds)
 
-    def __getitem__(self, item) -> 'Union[K,slist[K]]':
+    def __getitem__(self, item) -> 'Union[_K,slist[_K]]':
         if isinstance(item, slice):
             return slist(list.__getitem__(self, item))
         else:
             return list.__getitem__(self, item)
 
-    def extend(self, iterable: Iterable[K]) -> 'slist[K]':
+    def extend(self, iterable: Iterable[_K]) -> 'slist[_K]':
         list.extend(self, iterable)
         return self
 
-    def append(self, x) -> 'slist[K]':
+    def append(self, x) -> 'slist[_K]':
         list.append(self, x)
         return self
 
-    def remove(self, x) -> 'slist[K]':
+    def remove(self, x) -> 'slist[_K]':
         list.remove(self, x)
         return self
 
-    def insert(self, i, x) -> 'slist[K]':
+    def insert(self, i, x) -> 'slist[_K]':
         list.insert(self, i, x)
         return self
 
-    def exceptIndexes(self, *indexes: List[int]) -> 'stream[K]':
+    def exceptIndexes(self, *indexes: List[int]) -> 'stream[_K]':
         """
         Supports negative indexes
         :type indexes: list[int]
@@ -1068,7 +1068,7 @@ class slist(List[K], stream):
         :rtype: stream [ T ]
         """
 
-        def indexIgnorer(indexSet: frozenset, _stream: 'stream[K]'):
+        def indexIgnorer(indexSet: frozenset, _stream: 'stream[_K]'):
             i = 0
             for el in _stream:
                 if i not in indexSet:
@@ -1079,11 +1079,11 @@ class slist(List[K], stream):
         indexSet = frozenset(stream(indexes).map(lambda i: i if i >= 0 else i + sz))
         return stream(ItrFromFunc(lambda: indexIgnorer(indexSet, self)))
 
-    def __iadd__(self, other) -> 'stream[K]':
+    def __iadd__(self, other) -> 'stream[_K]':
         list.__iadd__(self, other)
         return self
 
-    def __add__(self, x: List[K]) -> Union[stream[K], List[K]]:
+    def __add__(self, x: List[_K]) -> Union[stream[_K], List[_K]]:
         if not isinstance(x, list) and isinstance(x, stream):
             return stream(self) + x
         return slist(super().__add__(x))
@@ -1093,14 +1093,14 @@ class slist(List[K], stream):
              maxinterval: float = 10.0, ascii: Optional[Union[str, bool]] = None, unit: str = 'it',
              unit_scale: Optional[Union[bool, int, float]] = False, dynamic_ncols: Optional[bool] = False,
              smoothing: Optional[float] = 0.3, initial: int = 0, position: Optional[int] = None,
-             postfix: Optional[dict] = None, gui: bool = False, **kwargs) -> 'stream[K]':
+             postfix: Optional[dict] = None, gui: bool = False, **kwargs) -> 'stream[_K]':
         if total is None:
             total = self.size()
         return super().tqdm(desc, total, leave, file, ncols, mininterval, maxinterval, ascii, unit, unit_scale,
                             dynamic_ncols, smoothing, initial, position, postfix, gui, **kwargs)
 
 
-class sdict(Dict[K, V], dict, _IStream):
+class sdict(Dict[_K, _V], dict, _IStream):
     @property
     def _itr(self):
         return ItrFromFunc(lambda: iter(self))
@@ -1111,20 +1111,20 @@ class sdict(Dict[K, V], dict, _IStream):
     def __iter__(self):
         return dict.__iter__(self)
 
-    def keys(self) -> stream[K]:
+    def keys(self) -> stream[_K]:
         return stream(dict.keys(self))
 
-    def values(self) -> stream[V]:
+    def values(self) -> stream[_V]:
         return stream(dict.values(self))
     
-    def items(self) -> stream[Tuple[K, V]]:
+    def items(self) -> stream[Tuple[_K, _V]]:
         return stream(dict.items(self))
     
-    def update(self, other=None, **kwargs) -> 'sdict[K,V]':
+    def update(self, other=None, **kwargs) -> 'sdict[_K,_V]':
         dict.update(self, other, **kwargs)
         return self
     
-    def copy(self) -> 'sdict[K,V]':
+    def copy(self) -> 'sdict[_K,_V]':
         return sdict(self.items())
     
     def tqdm(self, desc: Optional[str] = None, total: Optional[int] = None, leave: bool = True,
@@ -1132,13 +1132,13 @@ class sdict(Dict[K, V], dict, _IStream):
              maxinterval: float = 10.0, ascii: Optional[Union[str, bool]] = None, unit: str = 'it',
              unit_scale: Optional[Union[bool, int, float]] = False, dynamic_ncols: Optional[bool] = False,
              smoothing: Optional[float] = 0.3, initial: int = 0, position: Optional[int] = None,
-             postfix: Optional[dict] = None, gui: bool = False, **kwargs) -> 'stream[K]':
+             postfix: Optional[dict] = None, gui: bool = False, **kwargs) -> 'stream[_K]':
         if total is None:
             total = self.size()
         return super().tqdm(desc, total, leave, file, ncols, mininterval, maxinterval, ascii, unit, unit_scale,
                             dynamic_ncols, smoothing, initial, position, postfix, gui, **kwargs)
     
-    def toJson(self) -> 'sdict[K,V]':
+    def toJson(self) -> 'sdict[_K,_V]':
         from pyxtension.Json import Json
         return Json(self)
 
@@ -1158,7 +1158,7 @@ class defaultstreamdict(sdict):
         else:
             self.__default_factory = default_factory
 
-    def __getitem__(self, key: K) -> V:
+    def __getitem__(self, key: _K) -> _V:
         try:
             return super(self.__class__, self).__getitem__(key)
         except KeyError:
@@ -1178,7 +1178,7 @@ class defaultstreamdict(sdict):
         itms = list(self.items())
         return type(self), args, None, None, iter(itms)
 
-    def copy(self) -> Mapping[K, V]:
+    def copy(self) -> Mapping[_K, _V]:
         return self.__copy__()
 
     def __copy__(self):
@@ -1197,9 +1197,9 @@ class defaultstreamdict(sdict):
         return dict.__str__(self)
 
 
-def smap(f, itr: Iterable[K]) -> stream[K]:
+def smap(f, itr: Iterable[_K]) -> stream[_K]:
     return stream(itr).map(f)
 
 
-def sfilter(f, itr: Iterable[K]) -> stream[K]:
+def sfilter(f, itr: Iterable[_K]) -> stream[_K]:
     return stream(itr).filter(f)
