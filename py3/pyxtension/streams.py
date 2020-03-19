@@ -12,8 +12,8 @@ import struct
 import sys
 import threading
 from abc import ABC
-from collections import defaultdict
-from functools import reduce
+from collections import defaultdict, abc
+from functools import reduce, partial
 from itertools import groupby
 from multiprocessing import Pool, cpu_count
 from operator import itemgetter
@@ -21,7 +21,7 @@ from queue import Queue
 from types import GeneratorType
 from typing import Optional, Union, Callable, TypeVar, Iterable, Iterator, Tuple, BinaryIO, List, \
     Mapping, MutableSet, \
-    Dict, Generator, overload, AbstractSet, Set
+    Dict, Generator, overload, AbstractSet, Set, Any
 
 ifilter = filter
 imap = map
@@ -58,13 +58,7 @@ class CallableGeneratorContainer(Callable[[], _K]):
         self._ifs = iterableFunctions
 
     def __call__(self) -> Generator[_K, None, None]:
-        return iteratorJoiner(self._ifs)
-
-
-def iteratorJoiner(itrIterables: List[ItrFromFunc[_K]]) -> Generator[_K, None, None]:
-    for i in itrIterables:
-        for obj in i:
-            yield obj
+        return itertools.chain.from_iterable(self._ifs)
 
 
 class EndQueue:
@@ -245,9 +239,13 @@ class _IStream(Iterable[_K], ABC):
                 yield el
 
     def map(self, f: Callable[[_K], _V]) -> 'stream[_V]':
-        return stream(ItrFromFunc(lambda: map(f, self)))
+        return stream(partial(map, f, self))
 
-    def mpmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[_V]':
+    def starmap(self, f: Callable[[_K], _V]) -> 'stream[_V]':
+        return stream(partial(itertools.starmap, f, self))
+
+    def mpmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
+              bufferSize: Optional[int] = None) -> 'stream[_V]':
         """
         Parallel ordered map using multiprocessing.Pool.imap
         :param poolSize: number of processes in Pool
@@ -313,16 +311,10 @@ class _IStream(Iterable[_K], ABC):
             bufferSize = poolSize
         if not isinstance(bufferSize, int) or bufferSize <= 0 or bufferSize > 2 ** 12:
             raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
-        return stream(ItrFromFunc(lambda: self.__fastFlatMap_generator(predicate, poolSize, bufferSize)))
+        return stream(lambda: self.__fastFlatMap_generator(predicate, poolSize, bufferSize))
 
     def enumerate(self) -> 'stream[Tuple[int,_K]]':
         return stream(zip(range(0, sys.maxsize), self))
-
-    @classmethod
-    def __flatMapGenerator(cls, itr: Iterable[_V], f: Callable[[_V], Iterable[_T]]) -> Generator[_T, None, None]:
-        for i in itr:
-            for j in f(i):
-                yield j
 
     def flatMap(self, predicate: Callable[[_K], Iterable[_V]] = _IDENTITY_FUNC) -> 'stream[_V]':
         """
@@ -330,7 +322,9 @@ class _IStream(Iterable[_K], ABC):
             By default predicate is an identity function
         :return: will return stream of objects of the same type of elements from the stream returned by predicate()
         """
-        return stream(ItrFromFunc(lambda: self.__class__.__flatMapGenerator(self, predicate)))
+        if id(predicate) == id(_IDENTITY_FUNC):
+            return stream(ItrFromFunc(lambda: itertools.chain.from_iterable(self)))
+        return stream(ItrFromFunc(lambda: itertools.chain.from_iterable(self.map(predicate))))
 
     def filter(self, predicate: Optional[Callable[[_K], bool]] = None) -> 'stream[_K]':
         """
@@ -396,8 +390,7 @@ class _IStream(Iterable[_K], ABC):
         groupBy(keyfunc]) -> create an iterator which returns
         (key, sub-iterator) grouped by each value of key(value).
         """
-        return stream(
-            ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], slist(kv[1])))
+        return stream(lambda: groupby(sorted(self, key=keyfunc), keyfunc)).map(lambda kv: (kv[0], slist(kv[1])))
 
     def countByValue(self) -> 'sdict[_K,int]':
         return sdict(collections.Counter(self))
@@ -443,7 +436,7 @@ class _IStream(Iterable[_K], ABC):
     def toMap(self: 'stream[Tuple[_T,_V]]') -> 'sdict[_T,_V]':
         return sdict(self)
 
-    def toSumCounter(self: 'stream[Tuple[_T,_V]]') -> 'sdict[_T,_V]]':
+    def toSumCounter(self: 'stream[Tuple[_T,_V]]') -> 'sdict[_T,_V]':
         """
         Elements should be tuples (T, V) where V can be summed
         :return: sdict on stream elements
@@ -484,7 +477,7 @@ class _IStream(Iterable[_K], ABC):
                    stop: Optional[int] = None,
                    step: Optional[int] = None) -> 'stream[_K]':
         # ToDo:fix this for cases where self._itr is generator from fastmap(), so have to be closed()
-        return stream(ItrFromFunc(lambda: itertools.islice(self, start, stop, step)))
+        return stream(lambda: itertools.islice(self, start, stop, step))
 
     def __add__(self, other) -> 'stream[_K]':
         if not isinstance(other, ItrFromFunc):
@@ -495,7 +488,7 @@ class _IStream(Iterable[_K], ABC):
             i = self._itr
         else:
             i = ItrFromFunc(lambda: self._itr)
-        return stream(ItrFromFunc(CallableGeneratorContainer((i, othItr))))
+        return stream(CallableGeneratorContainer((i, othItr)))
 
     def __iadd__(self, other) -> 'stream[_K]':
         if not isinstance(other, ItrFromFunc):
@@ -539,6 +532,17 @@ class _IStream(Iterable[_K], ABC):
     def mkString(self, c) -> str:
         return self.join(c)
 
+    def batch(self, size: int) -> 'stream[_K]':
+
+        def batch_gen(itr):
+            while True:
+                batch = slist(itertools.islice(itr, 0, size))
+                if not batch:
+                    break
+                yield batch
+
+        return stream(lambda: stream(batch_gen(iter(self))))
+
     # ToDo - add this fix to Python 2.7
     def take(self, n: int) -> 'stream[_K]':
         def gen(other_gen: GeneratorType, n):
@@ -576,10 +580,67 @@ class _IStream(Iterable[_K], ABC):
                     break
             if isGen: other_gen.close()
 
-        return stream(gen(self._itr, predicate))
+        return stream(gen(self, predicate))
 
-    def head(self) -> _K:
-        return next(iter(self))
+    def dropWhile(self, predicate: Callable[[_K], bool]):
+        return stream(partial(itertools.dropwhile, predicate, self))
+
+    def next(self) -> _K:
+        if self._itr is not None:
+            try:
+                n = next(self._itr)
+                return n
+            except TypeError:
+                self._itr = iter(self._itr)
+                return next(self._itr)
+        else:
+            self._itr = iter(self)
+            self._f = None
+            return next(self._itr)
+
+    def head(self, n: int) -> 'stream[_K]':
+        "Return a stream over the first n items"
+        return stream(itertools.islice(self, n))
+
+    def tail(self, n: int):
+        "Return a steam over the last n items"
+        return stream(collections.deque(self, maxlen=n))
+
+    def all_equal(self) -> bool:
+        "Returns True if all the elements are equal to each other"
+        g = groupby(self)
+        return next(g, True) and not next(g, False)
+
+    def quantify(self, predicate: Callable[[_K], bool]) -> int:
+        "Count how many times the predicate is true"
+        return sum(self.map(predicate))
+
+    def pad_with(self, pad: Any) -> 'stream[Union[Any,_K]]':
+        """Returns the sequence elements and then returns None indefinitely.
+
+        Useful for emulating the behavior of the built-in map() function.
+        """
+        return stream(itertools.chain(self, itertools.repeat(pad)))
+
+    def roundrobin(self) -> 'stream':
+        """
+        roundrobin('ABC', 'D', 'EF') --> A D E B F C
+        Recipe credited to https://docs.python.org/3/library/itertools.html#itertools.chain.from_iterable
+        """
+
+        def gen(s: 'stream'):
+            num_active = s.size()
+            nexts = itertools.cycle(iter(it).__next__ for it in s)
+            while num_active:
+                try:
+                    for next in nexts:
+                        yield next()
+                except StopIteration:
+                    # Remove the iterator we just exhausted from the cycle.
+                    num_active -= 1
+                    nexts = itertools.cycle(itertools.islice(nexts, num_active))
+
+        return stream(lambda: gen(self))
 
     def sum(self) -> numbers.Real:
         return sum(self)
@@ -668,7 +729,7 @@ class _IStream(Iterable[_K], ABC):
         :return: Unique elements appearing in the same order. Following copies of same elements will be ignored.
         :rtype: stream[U]
         """
-        return stream(ItrFromFunc(lambda: _IStream.__unique_generator(self, predicate)))
+        return stream(lambda: _IStream.__unique_generator(self, predicate))
 
     def tqdm(self, desc: Optional[str] = None,
              total: Optional[int] = None,
@@ -792,18 +853,32 @@ class _IStream(Iterable[_K], ABC):
                 i += 1
 
         indexSet = frozenset(indexes)
-        return stream(ItrFromFunc(lambda: indexIgnorer(indexSet, self)))
+        return stream(lambda: indexIgnorer(indexSet, self))
 
 
 class stream(_IStream, Iterable[_K]):
-    def __init__(self, itr: Optional[Iterator[_K]] = None):
+    def __init__(self, itr: Optional[Union[Iterator[_K], Callable[[], Iterable[_K]]]] = None):
+        self._f = None
         if itr is None:
             self._itr = []
-        else:
+        elif isinstance(itr, (abc.Iterable, abc.Iterator)) or hasattr(itr, '__iter__') or hasattr(itr, '__getitem__'):
             self._itr = itr
+        elif callable(itr):
+            self._f = itr
+            self._itr = None
+        else:
+            raise TypeError(
+                "Argument f to %s should be callable or iterable, but itr.__class__=%s" % (
+                    str(self.__class__), str(itr.__class__)))
 
     def __iter__(self) -> Iterator[_K]:
-        return iter(self._itr)
+        return iter(self.__get_itr())
+
+    def __get_itr(self):
+        if self._itr is not None:
+            return self._itr
+        else:
+            return self._f()
 
     def __repr__(self):
         if isinstance(self._itr, list):
@@ -819,7 +894,7 @@ class stream(_IStream, Iterable[_K]):
 
     def __reversed__(self):
         try:
-            return stream(reversed(self._itr))
+            return stream(reversed(self.__get_itr()))
         except TypeError:
             try:
                 def r():
@@ -833,7 +908,7 @@ class stream(_IStream, Iterable[_K]):
                         except TypeError:
                             raise TypeError("Can not reverse stream")
 
-                return stream(ItrFromFunc(lambda: r()))
+                return stream(lambda: r())
 
             except Exception:
                 raise TypeError("Can not reverse stream")
@@ -871,7 +946,6 @@ class stream(_IStream, Iterable[_K]):
                                   format: str = "<L",
                                   statHandler: Optional[Callable[[int, int], None]] = None) -> 'stream[_V]':
         '''
-        :param file: should be path or binary file stream
         :param statHandler: statistics handler, will be called before every yield with a tuple (n,size)
         '''
         if isinstance(readStream, str):
@@ -900,6 +974,7 @@ class AbstractSynchronizedBufferedStream(stream):
         self.__queue = slist()
         self.__lock = threading.RLock()
         self.__idx = -1
+        super().__init__()
 
     def __next__(self):
         self.__lock.acquire()
@@ -1077,7 +1152,7 @@ class slist(List[_K], stream):
 
         sz = self.size()
         indexSet = frozenset(stream(indexes).map(lambda i: i if i >= 0 else i + sz))
-        return stream(ItrFromFunc(lambda: indexIgnorer(indexSet, self)))
+        return stream(lambda: indexIgnorer(indexSet, self))
 
     def __iadd__(self, other) -> 'stream[_K]':
         list.__iadd__(self, other)
@@ -1203,3 +1278,27 @@ def smap(f, itr: Iterable[_K]) -> stream[_K]:
 
 def sfilter(f, itr: Iterable[_K]) -> stream[_K]:
     return stream(itr).filter(f)
+
+
+def iter_except(func: Callable[[], _K], exc: Exception, first: Optional[Callable[[], _K]] = None) -> _K:
+    """ Call a function repeatedly until an exception is raised.
+
+    Converts a call-until-exception interface to an iterator interface.
+    Like builtins.iter(func, sentinel) but uses an exception instead
+    of a sentinel to end the loop.
+
+    Examples:
+        iter_except(functools.partial(heappop, h), IndexError)   # priority queue iterator
+        iter_except(d.popitem, KeyError)                         # non-blocking dict iterator
+        iter_except(d.popleft, IndexError)                       # non-blocking deque iterator
+        iter_except(q.get_nowait, Queue.Empty)                   # loop over a producer Queue
+        iter_except(s.pop, KeyError)                             # non-blocking set iterator
+
+    """
+    try:
+        if first is not None:
+            yield first()  # For database APIs needing an initial cast to db.first()
+        while True:
+            yield func()
+    except exc:
+        pass

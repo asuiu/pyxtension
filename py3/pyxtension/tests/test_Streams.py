@@ -9,7 +9,7 @@ from io import BytesIO
 from unittest.mock import MagicMock
 
 from pyxtension.Json import JsonList, Json
-from pyxtension.streams import stream, slist, sset, sdict, ItrFromFunc, defaultstreamdict, TqdmMapper
+from pyxtension.streams import stream, slist, sset, sdict, defaultstreamdict, TqdmMapper
 
 ifilter = filter
 xrange = range
@@ -185,13 +185,13 @@ class StreamTestCase(unittest.TestCase):
         self.s = lambda: stream((1, 2, 3))
 
     def test_fastFlatMap_reiteration(self):
-        l = stream(ItrFromFunc(lambda: (xrange(i) for i in xrange(5)))).fastFlatMap()
+        l = stream(lambda: (xrange(i) for i in xrange(5))).fastFlatMap()
         self.assertListEqual(sorted(l.toList()), sorted([0, 0, 1, 0, 1, 2, 0, 1, 2, 3]))
         self.assertEqual(sorted(l.toList()),
                          sorted([0, 0, 1, 0, 1, 2, 0, 1, 2, 3]))  # second time to assert the regeneration of generator
 
     def test_fastmap_reiteration(self):
-        l = stream(ItrFromFunc(lambda: (xrange(i) for i in xrange(5)))).fastmap(len)
+        l = stream(lambda: (xrange(i) for i in xrange(5))).fastmap(len)
         self.assertEqual(l.toList(), [0, 1, 2, 3, 4])
         self.assertEqual(l.toList(), [0, 1, 2, 3, 4])  # second time to assert the regeneration of generator
 
@@ -207,7 +207,7 @@ class StreamTestCase(unittest.TestCase):
         self.assertEqual(stream([(1, 2), (3, 4)]).zip().toList(), [(1, 3), (2, 4)])
 
     def test_filterFromGeneratorReinstantiatesProperly(self):
-        s = stream(ItrFromFunc(lambda: (i for i in xrange(5))))
+        s = stream(lambda: (i for i in xrange(5)))
         s = s.filter(lambda e: e % 2 == 0)
         self.assertEqual(s.toList(), [0, 2, 4])
         self.assertEqual(s.toList(), [0, 2, 4])
@@ -236,17 +236,31 @@ class StreamTestCase(unittest.TestCase):
         self.assertListEqual(j, [["a", 2], [3, 4]])
 
     def testStreamsFromGenerator(self):
-        sg = stream(ItrFromFunc(lambda: (i for i in range(4))))
+        sg = stream(lambda: (i for i in range(4)))
         self.assertEqual(sg.size(), 4)
         self.assertEqual(sg.size(), 4)
         self.assertEqual(sg.filter(lambda x: x > 1).toList(), [2, 3])
         self.assertEqual(sg.filter(lambda x: x > 1).toList(), [2, 3])
         self.assertEqual(sg.map(lambda x: x > 1).toList(), [False, False, True, True])
         self.assertEqual(sg.map(lambda x: x > 1).toList(), [False, False, True, True])
-        self.assertEqual(sg.head(), 0)
-        self.assertEqual(sg.head(), 0)
         self.assertEqual(sg.map(lambda i: i ** 2).enumerate().toList(), [(0, 0), (1, 1), (2, 4), (3, 9)])
         self.assertEqual(sg.reduce(lambda x, y: x + y, 5), 11)
+        self.assertListEqual(list(sg.batch(2)), [[0, 1], [2, 3]])
+        self.assertListEqual(list(sg.batch(2)), [[0, 1], [2, 3]])
+
+    def test_next_from_gen(self):
+        # Next consumes from stream
+        sg = stream(lambda: (i for i in range(4)))
+        self.assertEqual(sg.next(), 0)
+        self.assertEqual(sg.next(), 1)
+        self.assertListEqual(list(sg), [2, 3])
+
+    def test_next_from_list(self):
+        # Next consumes from stream
+        sg = stream([i for i in range(4)])
+        self.assertEqual(sg.next(), 0)
+        self.assertEqual(sg.next(), 1)
+        self.assertListEqual(list(sg), [2, 3])
 
     def testStreamPickling(self):
         sio = BytesIO()
@@ -266,6 +280,11 @@ class StreamTestCase(unittest.TestCase):
         result = stream.loadFromPickled(sio)
         self.assertEqual(list(expected), list(result))
 
+    def test_starmap(self):
+        s = stream([(2, 5), (3, 2), (10, 3)]).starmap(pow)
+        self.assertListEqual(s.toList(), [32, 9, 1000])
+        self.assertListEqual(s.toList(), [32, 9, 1000])
+
     def test_flatMap_nominal(self):
         s = stream([[1, 2], [3, 4], [4, 5]])
         self.assertListEqual(s.flatMap().toList(), [1, 2, 3, 4, 4, 5])
@@ -275,7 +294,7 @@ class StreamTestCase(unittest.TestCase):
         self.assertEqual(s.flatMap(dict.items).toSet(), set(((1, 2), (5, 6), (3, 4), (7, 8))))
 
     def test_flatMap_reiteration(self):
-        l = stream(ItrFromFunc(lambda: (xrange(i) for i in xrange(5)))).flatMap()
+        l = stream(lambda: (xrange(i) for i in xrange(5))).flatMap()
         self.assertEqual(l.toList(), [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])
         self.assertEqual(l.toList(),
                           [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])  # second time to assert the regeneration of generator
@@ -543,7 +562,7 @@ class StreamTestCase(unittest.TestCase):
         self.assertListEqual(s.unique().toList(), [])
 
     def test_unique_generator_stream(self):
-        s = stream(ItrFromFunc(lambda: xrange(4)))
+        s = stream(lambda: xrange(4))
         u = s.unique()
         self.assertListEqual(u.toList(), [0, 1, 2, 3])
         self.assertListEqual(u.toList(), [0, 1, 2, 3])
@@ -617,6 +636,42 @@ class StreamTestCase(unittest.TestCase):
         streamToTest.join = mock
         streamToTest.mkString(joiner)
         mock.assert_called_once_with(joiner)
+
+    def test_batch_nominal(self):
+        s = stream(range(10))
+        self.assertListEqual(s.batch(3).toList(), [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]])
+
+    def test_batch_is_empty(self):
+        s = stream([])
+        self.assertListEqual(s.batch(3).toList(), [])
+
+    def test_takeWhile(self):
+        s = stream(partial(iter, [1, 4, 6, 4, 1]))
+        self.assertListEqual(s.takeWhile(lambda x: x < 5).toList(), [1, 4])
+        self.assertListEqual(s.takeWhile(lambda x: x < 5).toList(), [1, 4])
+
+    def test_dropWhile(self):
+        s = stream(partial(iter, [1, 4, 6, 4, 1]))
+        self.assertListEqual(s.dropWhile(lambda x: x < 5).toList(), [6, 4, 1])
+        self.assertListEqual(s.dropWhile(lambda x: x < 5).toList(), [6, 4, 1])
+
+    def test_tail_nominal(self):
+        s = stream(range(20))
+        self.assertListEqual(s.tail(5).toList(), [15, 16, 17, 18, 19])
+
+    def test_round_robin_nominal(self):
+        s = stream(['ABC', 'D', 'EF'])
+        self.assertListEqual(s.roundrobin().toList(), ['A', 'D', 'E', 'B', 'F', 'C'])
+
+    def test_pad_with_nominal(self):
+        s = stream(range(2))
+        self.assertListEqual(s.pad_with(5).take(5).toList(), [0, 1, 5, 5, 5])
+
+    def test_all_equal_nominal(self):
+        equal_s = stream('AAAAA')
+        distinct_s = stream('AAABAAA')
+        self.assertTrue(equal_s.all_equal())
+        self.assertFalse(distinct_s.all_equal())
 
     def test_reversedNominal(self):
         s = stream([1, 2, 3])

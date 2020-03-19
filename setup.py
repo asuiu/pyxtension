@@ -10,6 +10,9 @@ from shutil import copy, rmtree
 
 __author__ = 'ASU'
 
+# Bump up this version
+VERSION = '1.13.2'
+
 from setuptools import setup
 from setuptools.command.install import install
 from wheel.bdist_wheel import bdist_wheel
@@ -78,7 +81,7 @@ class BdistWheelCommand(bdist_wheel, object):
 
 
 parameters = dict(name='pyxtension',
-                  version='1.13.0',
+                  version=VERSION,
                   description='Extension library for Python',
                   long_description=long_description,
                   long_description_content_type="text/markdown",
