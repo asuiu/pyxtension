@@ -349,7 +349,7 @@ class _IStream(Iterable[_K], ABC):
                 return True
         return False
 
-    def keyBy(self, keyfunc: Callable[[_K], _V] = _IDENTITY_FUNC) -> 'stream[Tuple[_K,_V]]':
+    def keyBy(self, keyfunc: Callable[[_K], _V] = _IDENTITY_FUNC) -> 'stream[Tuple[_K, _V]]':
         """
         :param keyfunc: function to map values to keys
         :return: stream of Key, Value pairs
@@ -370,27 +370,43 @@ class _IStream(Iterable[_K], ABC):
         """
         return self.map(itemgetter(1))
 
-    def groupBy(self, keyfunc: Callable[[_K], _T] = _IDENTITY_FUNC) -> 'stream[Tuple[_T,stream[_K]]]':
+    def groupBy(self, keyfunc: Callable[[_K], _T] = _IDENTITY_FUNC) -> 'slist[Tuple[_T, slist[_K]]]':
         """
-        groupBy([keyfunc]) -> Make an iterator that returns consecutive keys and groups from the iterable.
-        The iterable needs not to be sorted on the same key function, but the keyfunction need to return hasable objects.
+        groupBy([keyfunc]) -> Make a slist with consecutive keys and groups from the iterable.
+        The iterable needs not to be sorted on the same key function, but the keyfunction need to return hashable objects.
         :param keyfunc: [Optional] The key is a function computing a key value for each element.
         :return: (key, sub-iterator) grouped by each value of key(value).
         """
-        # return stream(
-        # 	ItrFromFunc(lambda: groupby(sorted(self, key=keyfunc), keyfunc))).map(lambda kv: (kv[0], stream(kv[1])))
         h = defaultdict(slist)
         for v in self:
             h[keyfunc(v)].append(v)
-        ##for
-        return stream(iter(h.items()))
+        return slist(h.items())
 
-    def groupByToList(self, keyfunc: Callable[[_K], _T] = _IDENTITY_FUNC) -> 'stream[Tuple[_T,slist[_K]]]':
+    @staticmethod
+    def __stream_on_second_el(t: Tuple[_K, Iterable[_T]]) -> 'Tuple[_K, stream[_T]]':
+        return t[0], stream(t[1])
+
+    @staticmethod
+    def __slist_on_second_el(t: Tuple[_K, Iterable[_T]]) -> 'Tuple[_K, slist[_T]]':
+        return t[0], slist(t[1])
+
+    def groupBySorted(self, keyfunc: Optional[Callable[[_K], _T]] = None) -> 'stream[Tuple[_T, stream[_K]]]':
         """
-        groupBy(keyfunc]) -> create an iterator which returns
-        (key, sub-iterator) grouped by each value of key(value).
+        Make a stream of consecutive keys and groups (as streams) from the self.
+        The iterable needs to already be sorted on the same key function.
+        :param keyfunc: a function computing a key value for each element. Defaults to an identity function and returns the element unchanged.
+        :return: (key, sub-iterator) grouped by each value of key(value).
         """
-        return stream(lambda: groupby(sorted(self, key=keyfunc), keyfunc)).map(lambda kv: (kv[0], slist(kv[1])))
+        return stream(partial(groupby, iterable=self, key=keyfunc)).map(self.__stream_on_second_el)
+
+    def groupBySortedToList(self, keyfunc: Callable[[_K], _T] = _IDENTITY_FUNC) -> 'stream[Tuple[_T, slist[_K]]]':
+        """
+        Make a stream of consecutive keys and groups (as streams) from the self.
+        The iterable needs to already be sorted on the same key function.
+        :param keyfunc: a function computing a key value for each element. Defaults to an identity function and returns the element unchanged.
+        :return: (key, sub-iterator) grouped by each value of key(value).
+        """
+        return stream(partial(groupby, iterable=self, key=keyfunc)).map(self.__slist_on_second_el)
 
     def countByValue(self) -> 'sdict[_K,int]':
         return sdict(collections.Counter(self))
