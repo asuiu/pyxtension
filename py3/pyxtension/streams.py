@@ -688,7 +688,7 @@ class _IStream(Iterable[_K], ABC):
             k = key(v)
             if k > mval:
                 mval = k
-                aMaxes = [v]
+                aMaxes = slist([v])
             elif k == mval:
                 aMaxes.append(v)
         return aMaxes
@@ -701,7 +701,7 @@ class _IStream(Iterable[_K], ABC):
             k = key(v)
             if k < mval:
                 mval = k
-                aMaxes = [v]
+                aMaxes = slist([v])
             elif k == mval:
                 aMaxes.append(v)
         return aMaxes
