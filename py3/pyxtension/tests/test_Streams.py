@@ -318,6 +318,12 @@ class StreamTestCase(unittest.TestCase):
 
         self.assertListEqual(s.transform(f).toList(), [1, 2, 2, 3, 3, 3])
 
+    def test_shuffle_nominal(self):
+        l = list(range(100))
+        s = stream(l).shuffle()
+        self.assertNotEqual(l, list(s))
+        self.assertSetEqual(set(l), s.toSet())
+
     def test_maxes(self):
         self.assertEqual(stream(['a', 'abc', 'abcd', 'defg', 'cde']).maxes(lambda s: len(s)), ['abcd', 'defg'])
 

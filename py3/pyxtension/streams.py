@@ -18,6 +18,7 @@ from itertools import groupby
 from multiprocessing import Pool, cpu_count
 from operator import itemgetter
 from queue import Queue
+from random import shuffle
 from types import GeneratorType
 from typing import Optional, Union, Callable, TypeVar, Iterable, Iterator, Tuple, BinaryIO, List, \
     Mapping, MutableSet, \
@@ -440,8 +441,13 @@ class _IStream(Iterable[_K], ABC):
         else:
             return reduce(f, self, init)
 
-    def transform(self, f: Callable[[Iterable], Iterable]):
+    def transform(self, f: Callable[[Iterable[_K]], Iterable[_V]]) ->'stream[_V]':
         return stream(partial(f, self))
+
+    def shuffle(self, random=None) -> 'slist[_K]':
+        lst = self.toList()
+        shuffle(lst, random=random)
+        return lst
 
     def toSet(self) -> 'sset[_K]':
         return sset(self)
