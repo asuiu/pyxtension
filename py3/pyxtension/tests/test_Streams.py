@@ -308,6 +308,16 @@ class StreamTestCase(unittest.TestCase):
         self.assertEqual(slist([sset((1, 2)), sset((3, 4))]).reduce(lambda x, y: x.update(y), sset()),
                           set((1, 2, 3, 4)))
 
+    def test_transform_nominal(self):
+        s = stream(range(4))
+
+        def f(itr):
+            for i in itr:
+                for j in range(i):
+                    yield i
+
+        self.assertListEqual(s.transform(f).toList(), [1, 2, 2, 3, 3, 3])
+
     def test_maxes(self):
         self.assertEqual(stream(['a', 'abc', 'abcd', 'defg', 'cde']).maxes(lambda s: len(s)), ['abcd', 'defg'])
 

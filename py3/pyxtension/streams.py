@@ -440,6 +440,9 @@ class _IStream(Iterable[_K], ABC):
         else:
             return reduce(f, self, init)
 
+    def transform(self, f: Callable[[Iterable], Iterable]):
+        return stream(partial(f, self))
+
     def toSet(self) -> 'sset[_K]':
         return sset(self)
 
@@ -1195,7 +1198,7 @@ class sdict(Dict[_K, _V], dict, _IStream):
     @property
     def _itr(self):
         return ItrFromFunc(lambda: iter(self))
-    
+
     def __init__(self, *args, **kwrds):
         dict.__init__(self, *args, **kwrds)
 
@@ -1207,17 +1210,17 @@ class sdict(Dict[_K, _V], dict, _IStream):
 
     def values(self) -> stream[_V]:
         return stream(dict.values(self))
-    
+
     def items(self) -> stream[Tuple[_K, _V]]:
         return stream(dict.items(self))
-    
+
     def update(self, other=None, **kwargs) -> 'sdict[_K,_V]':
         dict.update(self, other, **kwargs)
         return self
-    
+
     def copy(self) -> 'sdict[_K,_V]':
         return sdict(self.items())
-    
+
     def tqdm(self, desc: Optional[str] = None, total: Optional[int] = None, leave: bool = True,
              file: Optional[io.TextIOWrapper] = None, ncols: Optional[int] = None, mininterval: float = 0.1,
              maxinterval: float = 10.0, ascii: Optional[Union[str, bool]] = None, unit: str = 'it',
@@ -1228,7 +1231,7 @@ class sdict(Dict[_K, _V], dict, _IStream):
             total = self.size()
         return super().tqdm(desc, total, leave, file, ncols, mininterval, maxinterval, ascii, unit, unit_scale,
                             dynamic_ncols, smoothing, initial, position, postfix, gui, **kwargs)
-    
+
     def toJson(self) -> 'sdict[_K,_V]':
         from pyxtension.Json import Json
         return Json(self)
