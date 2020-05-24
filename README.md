@@ -102,12 +102,14 @@ word_counts = stream(corpus).\
 Identic with builtin `map` but returns a stream
 
 
-###### **mpmap(f, poolSize=16)**
+###### **mpmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None)**
 Parallel ordered map using `multiprocessing.Pool.imap()`.
 
 It can replace the `map` when need to split computations to multiple cores, and order of results matters.
 
 It spawns at most `poolSize` processes and applies the `f` function.
+
+It won't take more than `bufferSize` elements from the input unless it was already required by output, so you can use it with `takeWhile` on infinite streams and not be afraid that it will continue work in background.
 
 The elements in the result stream appears in the same order they appear in the initial iterable.
 
@@ -117,12 +119,14 @@ The elements in the result stream appears in the same order they appear in the i
 ```
 
 
-###### **mpfastmap(f, poolSize=16)**
+###### **mpfastmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None)**
 Parallel ordered map using `multiprocessing.Pool.imap_unordered()`.
 
 It can replace the `map` when the ordered of results doesn't matter.
 
 It spawns at most `poolSize` processes and applies the `f` function.
+
+It won't take more than `bufferSize` elements from the input unless it was already required by output, so you can use it with `takeWhile` on infinite streams and not be afraid that it will continue work in background.
 
 The elements in the result stream appears in the unpredicted order.
 
@@ -132,13 +136,31 @@ The elements in the result stream appears in the unpredicted order.
 ```
 
 
-###### **fastmap(f, poolSize=16)**
+###### **fastmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None)**
 Parallel unordered map using multithreaded pool.
 It can replace the `map` when the ordered of results doesn't matter.
 
 It spawns at most `poolSize` threads and applies the `f` function.
 
-The elements in the result stream appears in the unpredicted order.
+The elements in the result stream appears in the **unpredicted** order.
+
+It won't take more than `bufferSize` elements from the input unless it was already required by output, so you can use it with `takeWhile` on infinite streams and not be afraid that it will continue work in background.
+
+Because of CPython [GIL](https://wiki.python.org/moin/GlobalInterpreterLock) it's most usefull for I/O or CPU intensive consuming native functions, or on Jython or IronPython interpreters.
+
+:type f: (T) -> V
+
+:rtype: `stream`
+
+###### **mtmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None)**
+Parallel ordered map using multithreaded pool. 
+It can replace the `map` and the order of output stream will be the same as of the input.
+
+It spawns at most `poolSize` threads and applies the `f` function.
+
+The elements in the result stream appears in the **predicted** order.
+
+It won't take more than `bufferSize` elements from the input unless it was already required by output, so you can use it with `takeWhile` on infinite streams and not be afraid that it will continue work in background.  
 
 Because of CPython [GIL](https://wiki.python.org/moin/GlobalInterpreterLock) it's most usefull for I/O or CPU intensive consuming native functions, or on Jython or IronPython interpreters.
 

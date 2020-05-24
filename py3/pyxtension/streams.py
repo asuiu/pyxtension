@@ -22,7 +22,9 @@ from random import shuffle
 from types import GeneratorType
 from typing import Optional, Union, Callable, TypeVar, Iterable, Iterator, Tuple, BinaryIO, List, \
     Mapping, MutableSet, \
-    Dict, Generator, overload, AbstractSet, Set, Any
+    Dict, Generator, overload, AbstractSet, Set, Any, NamedTuple
+
+from pyxtension import validate
 
 ifilter = filter
 imap = map
@@ -85,6 +87,11 @@ class TqdmMapper:
         return el
 
 
+class _QElement(NamedTuple):
+    i: int
+    el: Any
+
+
 class _IStream(Iterable[_K], ABC):
     @staticmethod
     def __fastmap_thread(f, qin, qout):
@@ -96,6 +103,24 @@ class _IStream(Iterable[_K], ABC):
             try:
                 newEl = f(el)
                 qout.put(newEl)
+            except:
+                qout.put(MapException(sys.exc_info()))
+
+    @staticmethod
+    def __mtmap_thread(f, qin, qout):
+        """
+        :type qin:  Queue[Union[_QElement, EndQueue]]
+        :type qout: Queue[Union[_QElement, MapException]]
+        """
+        while True:
+            q_el = qin.get()
+
+            if isinstance(q_el, EndQueue):
+                qin.put(q_el)
+                return
+            try:
+                newEl = f(q_el.el)
+                qout.put(_QElement(q_el.i, newEl))
             except:
                 qout.put(MapException(sys.exc_info()))
 
@@ -153,6 +178,78 @@ class _IStream(Iterable[_K], ABC):
                     if isinstance(newEl, MapException):
                         raise newEl.exc_info[0](newEl.exc_info[1]).with_traceback(newEl.exc_info[2])
                     yield newEl
+        finally:
+            while not qin.empty():
+                qin.get()
+            qin.put(EndQueue())
+            while not qout.empty() or not qout.empty():
+                qout.get()
+            for t in threadPool:
+                t.join()
+
+    def __mtmap_generator(self, f: Callable[[_K], _V], poolSize: int, bufferSize: int):
+        qin = Queue(bufferSize)
+        qout = Queue(max(bufferSize, poolSize + 1))  # max() is needed to not block when exiting
+
+        threadPool = [threading.Thread(target=_IStream.__mtmap_thread, args=(f, qin, qout)) for _ in range(poolSize)]
+        for t in threadPool:
+            t.start()
+
+        in_i = 0
+        itr = iter(self)
+        hasNext = True
+        while in_i < bufferSize and hasNext:
+            try:
+                el = next(itr)
+            except StopIteration:
+                hasNext = False
+            else:
+                in_i += 1
+                qin.put(_QElement(in_i, el))
+        cache = {}
+        out_i = 1
+
+        def extract_all_from_cache():
+            nonlocal out_i
+            nonlocal in_i
+            nonlocal cache
+            while out_i in cache:
+                yield cache[out_i]
+                out_i += 1
+
+        def wait_for_all():
+            nonlocal out_i
+            nonlocal in_i
+            nonlocal cache
+            while not qout.empty():
+                q_el = qout.get()
+                if isinstance(q_el, MapException):
+                    raise q_el.exc_info[0](q_el.exc_info[1]).with_traceback(q_el.exc_info[2])
+                cache[q_el.i] = q_el.el
+            for el in extract_all_from_cache():
+                yield el
+            validate(out_i == in_i + 1, "__mtmap_generator Expecting for all elements to be in cache")
+
+        try:
+            while 1:
+                try:
+                    el = next(itr)
+                except StopIteration:
+                    qin.put(EndQueue())
+                    for t in threadPool:
+                        t.join()
+                    for el in wait_for_all():
+                        yield el
+                    break
+                else:
+                    in_i += 1
+                    qin.put(_QElement(in_i, el))
+                    q_el = qout.get()
+                    if isinstance(q_el, MapException):
+                        raise q_el.exc_info[0](q_el.exc_info[1]).with_traceback(q_el.exc_info[2])
+                    cache[q_el.i] = q_el.el
+                for el in extract_all_from_cache():
+                    yield el
         finally:
             while not qin.empty():
                 qin.get()
@@ -300,6 +397,26 @@ class _IStream(Iterable[_K], ABC):
             raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
 
         return stream(ItrFromFunc(lambda: self.__fastmap_generator(f, poolSize, bufferSize)))
+
+    def mtmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
+              bufferSize: Optional[int] = None) -> 'stream[_V]':
+        """
+        Parallel ORDERED map using multithreaded pool.
+        It spawns at most poolSize threads and applies the f function.
+        The elements in the result stream appears in the same order as at input.
+        It's most usefull for I/O or CPU intensive consuming functions.
+        :param poolSize: number of threads to spawn
+        """
+        if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:
+            raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+        elif poolSize == 1:
+            return self.map(f)
+        if bufferSize is None:
+            bufferSize = poolSize
+        if not isinstance(bufferSize, int) or bufferSize <= 0 or bufferSize > 2 ** 12:
+            raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+
+        return stream(ItrFromFunc(lambda: self.__mtmap_generator(f, poolSize, bufferSize)))
 
     # ToDo - add fastFlatMap to Python 2.x version
     def fastFlatMap(self, predicate: Callable[[_K], Iterable[_V]] = _IDENTITY_FUNC, poolSize: int = cpu_count(),

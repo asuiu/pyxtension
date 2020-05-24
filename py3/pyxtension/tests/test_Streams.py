@@ -26,6 +26,11 @@ def PICKABLE_SLEEP_FUNC(el):
     return el * el
 
 
+def _rnd_sleep(i):
+    time.sleep(i % 10 / 1000)
+    return i * i
+
+
 class SlistTestCase(unittest.TestCase):
     def test_slist_str_nominal(self):
         l = [1, 2, 3]
@@ -414,11 +419,30 @@ class StreamTestCase(unittest.TestCase):
         self.assertSetEqual(res, expected)
         self.assertLessEqual(dt, 1.5)
 
+    def test_mtmap_time(self):
+        def sleepFunc(el):
+            time.sleep(0.3)
+            return el * el
+
+        s = stream(xrange(100))
+        t1 = time.time()
+        res = s.mtmap(sleepFunc, poolSize=50).toSet()
+        dt = time.time() - t1
+        expected = set(i * i for i in xrange(100))
+        self.assertSetEqual(res, expected)
+        self.assertLessEqual(dt, 1.5)
+
     def test_fastmap_nominal(self):
         s = stream(xrange(100))
         res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
         expected = set(i * i for i in xrange(100))
         self.assertSetEqual(res, expected)
+
+    def test_mtmap_nominal(self):
+        s = stream(xrange(100))
+        res = s.mtmap(_rnd_sleep, poolSize=8, bufferSize=20).toList()
+        expected = [i * i for i in xrange(100)]
+        self.assertListEqual(res, expected)
 
     def test_fastmap_one_el(self):
         s = stream([1, ])
@@ -426,11 +450,23 @@ class StreamTestCase(unittest.TestCase):
         expected = set((1,))
         self.assertSetEqual(res, expected)
 
+    def test_mtmap_one_el(self):
+        s = stream([1, ])
+        res = s.mtmap(lambda x: x * x, poolSize=4).toList()
+        expected = [1]
+        self.assertListEqual(res, expected)
+
     def test_fastmap_no_el(self):
         s = stream([])
         res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
         expected = set()
         self.assertSetEqual(res, expected)
+
+    def test_mtmap_no_el(self):
+        s = stream([])
+        res = s.mtmap(lambda x: x * x, poolSize=4).toList()
+        expected = []
+        self.assertListEqual(res, expected)
 
     def test_fastmap_None_el(self):
         s = stream([None])
@@ -438,20 +474,44 @@ class StreamTestCase(unittest.TestCase):
         expected = set([None])
         self.assertSetEqual(res, expected)
 
+    def test_mtmap_None_el(self):
+        s = stream([None])
+        res = s.mtmap(lambda x: x, poolSize=4).toList()
+        expected = [None]
+        self.assertListEqual(res, expected)
+
     def test_fastmap_take_less(self):
         arr = []
+
         def m(i):
             arr.append(i)
             return i
-        s = stream(range(100)).map(m).fastmap(lambda x: x, poolSize=4,bufferSize=5).take(20)
+
+        s = stream(range(100)).map(m).fastmap(lambda x: x, poolSize=4, bufferSize=5).take(20)
         res = s.toList()
-        self.assertLessEqual(len(arr),30)
-        self.assertEqual(len(res),20)
+        self.assertLessEqual(len(arr), 30)
+        self.assertEqual(len(res), 20)
+
+    def test_mtmap_take_less(self):
+        arr = []
+
+        def m(i):
+            arr.append(i)
+            return i
+        s = stream(range(100)).map(m).mtmap(lambda x: x, poolSize=10, bufferSize=5).take(20)
+        res = s.toList()
+        self.assertLessEqual(len(arr), 25)
+        self.assertEqual(len(res), 20)
 
     def test_fastmap_raises_exception(self):
         s = stream([None])
         with self.assertRaises(TypeError):
             res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
+
+    def test_mtmap_raises_exception(self):
+        s = stream([None])
+        with self.assertRaises(TypeError):
+            res = s.mtmap(lambda x: x * x, poolSize=4).toSet()
 
     def test_mpfastmap_time(self):
         N = 10
