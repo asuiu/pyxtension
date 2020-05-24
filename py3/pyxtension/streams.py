@@ -452,11 +452,9 @@ class _IStream(Iterable[_K], ABC):
 
     def reversed(self) -> 'stream[_K]':
         try:
-            return self.__reversed__()
-        except TypeError:
-            raise TypeError("Can not reverse stream")
+            return stream(self.__reversed__())
         except AttributeError:
-            raise TypeError("Can not reverse stream")
+            return stream(lambda: reversed(self.toList()))
 
     def exists(self, f: Callable[[_K], bool]) -> bool:
         """
@@ -1038,22 +1036,7 @@ class stream(_IStream, Iterable[_K]):
         try:
             return stream(reversed(self.__get_itr()))
         except TypeError:
-            try:
-                def r():
-                    try:
-                        n = len(self)
-                    except TypeError:
-                        raise TypeError("Can not reverse stream")
-                    for i in range(n, 0, -1):
-                        try:
-                            yield self[i - 1]
-                        except TypeError:
-                            raise TypeError("Can not reverse stream")
-
-                return stream(lambda: r())
-
-            except Exception:
-                raise TypeError("Can not reverse stream")
+            return stream(lambda: reversed(self.toList()))
 
     @staticmethod
     def __binaryChunksStreamGenerator(fs, format="<L", statHandler: Optional[Callable[[int, int], None]] = None):
@@ -1327,6 +1310,9 @@ class sdict(Dict[_K, _V], dict, _IStream):
 
     def __iter__(self):
         return dict.__iter__(self)
+
+    def __reversed__(self):
+        raise TypeError("'sset' object is not reversible")
 
     def keys(self) -> stream[_K]:
         return stream(dict.keys(self))

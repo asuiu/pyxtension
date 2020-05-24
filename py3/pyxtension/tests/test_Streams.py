@@ -757,10 +757,10 @@ class StreamTestCase(unittest.TestCase):
         s = stream(range(1, 4))
         self.assertListEqual(s.reversed().toList(), [3, 2, 1])
 
-    def test_reversedException(self):
+    def test_reversedIterator(self):
         s = stream(iter(range(1, 4)))
-        with self.assertRaises(TypeError):
-            s.reversed().toList()
+        rev = s.reversed().toList()
+        self.assertListEqual(rev, [3, 2, 1])
 
     def test_len(self):
         # On iterable as init
