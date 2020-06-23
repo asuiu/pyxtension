@@ -11,6 +11,7 @@ import pickle
 import struct
 import sys
 import threading
+import traceback
 from abc import ABC
 from collections import defaultdict, abc
 from functools import reduce, partial
@@ -647,8 +648,9 @@ class _IStream(Iterable[_K], ABC):
     def size(self) -> int:
         try:
             return len(self)
-        except:
-            return sum(1 for i in iter(self))
+        except TypeError:
+            pass
+        return sum(1 for _ in iter(self))
 
     def join(self, f: Callable[[_K], _V] = None) -> Union[_K, str]:
         if f is None:
