@@ -11,7 +11,6 @@ import pickle
 import struct
 import sys
 import threading
-import traceback
 from abc import ABC
 from collections import defaultdict, abc
 from functools import reduce, partial
