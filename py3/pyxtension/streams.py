@@ -12,17 +12,16 @@ import struct
 import sys
 import threading
 from abc import ABC
-from collections import defaultdict, abc
-from functools import reduce, partial
+from collections import abc, defaultdict
+from functools import partial, reduce
 from itertools import groupby
-from multiprocessing import Pool, cpu_count
+from multiprocessing import cpu_count, Pool
 from operator import itemgetter
 from queue import Queue
 from random import shuffle
 from types import GeneratorType
-from typing import Optional, Union, Callable, TypeVar, Iterable, Iterator, Tuple, BinaryIO, List, \
-    Mapping, MutableSet, \
-    Dict, Generator, overload, AbstractSet, Set, Any, NamedTuple
+from typing import AbstractSet, Any, BinaryIO, Callable, Dict, Generator, Iterable, Iterator, List, Mapping, MutableSet, \
+    NamedTuple, Optional, overload, Set, Tuple, TypeVar, Union
 
 from pyxtension import validate
 
@@ -56,14 +55,6 @@ class ItrFromFunc(Iterable[_K]):
         return iter(self._f())
 
 
-class CallableGeneratorContainer(Callable[[], _K]):
-    def __init__(self, iterableFunctions: Iterable[ItrFromFunc[_K]]):
-        self._ifs = iterableFunctions
-
-    def __call__(self) -> Generator[_K, None, None]:
-        return itertools.chain.from_iterable(self._ifs)
-
-
 class EndQueue:
     pass
 
@@ -93,6 +84,25 @@ class _QElement(NamedTuple):
 
 
 class _IStream(Iterable[_K], ABC):
+    @staticmethod
+    def _init_itr(itr: Optional[Union[Iterator[_K], Callable[[], Iterable[_K]]]] = None) -> Tuple[
+        Optional[Iterable[_K]],
+        Optional[Callable[[], Iterable[_K]]]
+    ]:
+        _f = None
+        if itr is None:
+            _itr = []
+        elif isinstance(itr, (abc.Iterable, abc.Iterator)) or hasattr(itr, '__iter__') or hasattr(itr, '__getitem__'):
+            _itr = itr
+        elif callable(itr):
+            _f = itr
+            _itr = None
+        else:
+            raise TypeError(
+                    "Argument f to _IStream should be callable or iterable, but itr.__class__=%s" % (
+                            str(itr.__class__)))
+        return _itr, _f
+
     @staticmethod
     def __fastmap_thread(f, qin, qout):
         while True:
@@ -606,12 +616,11 @@ class _IStream(Iterable[_K], ABC):
         if isinstance(i, slice):
             return self.__getslice(i.start, i.stop, i.step)
         else:
-            itr = iter(self)
             tk = 0
             while tk < i:
-                next(itr)
+                self.next()
                 tk += 1
-            return next(itr)
+            return self.next()
 
     def __getslice(self, start: Optional[int] = None,
                    stop: Optional[int] = None,
@@ -620,28 +629,31 @@ class _IStream(Iterable[_K], ABC):
         return stream(lambda: itertools.islice(self, start, stop, step))
 
     def __add__(self, other) -> 'stream[_K]':
-        if not isinstance(other, ItrFromFunc):
-            othItr = ItrFromFunc(lambda: other)
+        if not isinstance(other, (ItrFromFunc, stream)):
+            othItr = stream(lambda: other)
         else:
             othItr = other
-        if isinstance(self._itr, ItrFromFunc):
+        if isinstance(self._itr, (ItrFromFunc, stream)):
             i = self._itr
+        elif self._itr is None:
+            i = ItrFromFunc(self._f)
         else:
             i = ItrFromFunc(lambda: self._itr)
-        return stream(CallableGeneratorContainer((i, othItr)))
+        return stream(partial(itertools.chain.from_iterable, (i, othItr)))
 
     def __iadd__(self, other) -> 'stream[_K]':
-        if not isinstance(other, ItrFromFunc):
-            othItr = ItrFromFunc(lambda: other)
+        if not isinstance(other, (ItrFromFunc, stream)):
+            othItr = stream(lambda: other)
         else:
             othItr = other
         if isinstance(self._itr, ItrFromFunc):
             i = self._itr
+        elif self._itr is None:
+            i = ItrFromFunc(self._f)
         else:
             j = self._itr
             i = ItrFromFunc(lambda: j)
-
-        self._itr = ItrFromFunc(CallableGeneratorContainer((i, othItr)))
+        self._itr, self._f = self._init_itr(partial(itertools.chain.from_iterable, (i, othItr)))
         return self
 
     def size(self) -> int:
@@ -999,18 +1011,7 @@ class _IStream(Iterable[_K], ABC):
 
 class stream(_IStream, Iterable[_K]):
     def __init__(self, itr: Optional[Union[Iterator[_K], Callable[[], Iterable[_K]]]] = None):
-        self._f = None
-        if itr is None:
-            self._itr = []
-        elif isinstance(itr, (abc.Iterable, abc.Iterator)) or hasattr(itr, '__iter__') or hasattr(itr, '__getitem__'):
-            self._itr = itr
-        elif callable(itr):
-            self._f = itr
-            self._itr = None
-        else:
-            raise TypeError(
-                "Argument f to %s should be callable or iterable, but itr.__class__=%s" % (
-                    str(self.__class__), str(itr.__class__)))
+        self._itr, self._f = self._init_itr(itr)
 
     def __iter__(self) -> Iterator[_K]:
         return iter(self.__get_itr())

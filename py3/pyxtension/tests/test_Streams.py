@@ -8,8 +8,8 @@ from functools import partial
 from io import BytesIO
 from unittest.mock import MagicMock
 
-from pyxtension.Json import JsonList, Json
-from pyxtension.streams import stream, slist, sset, sdict, defaultstreamdict, TqdmMapper
+from pyxtension.Json import Json, JsonList
+from pyxtension.streams import defaultstreamdict, sdict, slist, sset, stream, TqdmMapper
 
 ifilter = filter
 xrange = range
@@ -372,17 +372,98 @@ class StreamTestCase(unittest.TestCase):
         self.assertEqual(s1.toList(), [1, 2, 3, 4])
         self.assertEqual(s1.toList(), [1, 2, 3, 4])  # second time to exclude one time iterator bug
 
+    def test_stream_add_nonstream(self):
+        s1 = stream([1, 2])
+        s2 = range(3, 5)
+        s3 = s1 + s2
+        ll = s3.toList()
+        self.assertEqual(s3.toList(), [1, 2, 3, 4])
+        self.assertEqual(s3.toList(), [1, 2, 3, 4])  # second time to exclude one time iterator bug
+        s1 = s1 + s2
+        self.assertEqual(s1.toList(), [1, 2, 3, 4])
+        self.assertEqual(s1.toList(), [1, 2, 3, 4])  # second time to exclude one time iterator bug
+
+    def test_stream_add_with_function_and_generator(self):
+        s1 = stream(lambda: range(1, 3))
+        s2 = stream(range(3, 5))
+        s3 = s1 + s2
+        ll = s3.toList()
+        self.assertEqual(s3.toList(), [1, 2, 3, 4])
+        self.assertEqual(s3.toList(), [1, 2, 3, 4])  # second time to exclude one time iterator bug
+        s1 = s1 + s2
+        self.assertEqual(s1.toList(), [1, 2, 3, 4])
+        self.assertEqual(s1.toList(), [1, 2, 3, 4])  # second time to exclude one time iterator bug
+
     def test_stream_iadd(self):
         s1 = stream([1, 2])
         s1 += [3, 4]
         s1 += stream(xrange(5, 6))  # use xrange to cover the iterator case
-        self.assertEqual(s1.toList(), [1, 2, 3, 4, 5])
-        self.assertEqual(s1.toList(), [1, 2, 3, 4, 5])  # second time to exclude one time iterator bug
-        self.assertEqual(s1.toList(), [1, 2, 3, 4, 5])
+        s1 += stream(lambda: (i for i in xrange(6, 7)))  # to cover the lambda
+        expected = list(range(1, 7))
+        self.assertEqual(s1.toList(), expected)
+        self.assertEqual(s1.toList(), expected)  # second time to exclude one time iterator bug
+
+    def test_stream_iadd_generator(self):
+        s1 = stream([1, 2])
+        s1 += (i for i in xrange(3, 4))
+        s1 += stream(i for i in xrange(4, 5))
+        expected = list(range(1, 5))
+        self.assertEqual(s1.toList(), expected)
+
+    def test_stream_iadd_func_and_xrange(self):
+        s1 = stream(lambda: ((i for i in xrange(1, 3))))
+        s1 += stream(xrange(3, 4))
+        expected = list(range(1, 4))
+        self.assertEqual(s1.toList(), expected)
 
     def test_stream_getitem(self):
         s = stream(i for i in xrange(1))
         self.assertEqual(s[0], 0)
+
+    def test_stream_getitem_withGroupBy_functional(self):
+        s = stream(lambda: (i for i in xrange(10)))
+        sg = s.groupBySortedToList(lambda _: _ // 3)
+        expected = []
+        while True:
+            try:
+                expected.append(sg[0])
+            except StopIteration:
+                break
+        self.assertListEqual(expected, [(0, [0, 1, 2]), (1, [3, 4, 5]), (2, [6, 7, 8]), (3, [9])])
+
+    def test_stream_getitem_withGroupBySortedToList_generator(self):
+        s = stream(i for i in xrange(10))
+        sg = s.groupBySortedToList(lambda _: _ // 3)
+        expected = []
+        while True:
+            try:
+                expected.append(sg[0])
+            except StopIteration:
+                break
+        self.assertListEqual(expected, [(0, [0, 1, 2]), (1, [3, 4, 5]), (2, [6, 7, 8]), (3, [9])])
+
+    def test_stream_getitem_withGroupBySortedToList_next(self):
+        s = stream(i for i in xrange(10))
+        sg = s.groupBySortedToList(lambda _: _ // 3)
+        expected = []
+        while True:
+            try:
+                expected.append(sg.next())
+            except StopIteration:
+                break
+        self.assertListEqual(expected, [(0, [0, 1, 2]), (1, [3, 4, 5]), (2, [6, 7, 8]), (3, [9])])
+
+    def test_stream_getitem_withGroupBySorted_next(self):
+        s = stream(i for i in xrange(10))
+        sg = s.groupBySorted(lambda _: _ // 3)
+        expected = []
+        while True:
+            try:
+                t = sg[0]
+                expected.append((t[0], t[1].toList()))
+            except StopIteration:
+                break
+        self.assertListEqual(expected, [(0, [0, 1, 2]), (1, [3, 4, 5]), (2, [6, 7, 8]), (3, [9])])
 
     def test_fastFlatMap_nominal(self):
         s = stream([[1, 2], [3, 4], [4, 5]])
