@@ -466,3 +466,9 @@ Assignment as keys will still work::
 pyxtension is released under a GNU Public license.
 The idea for [Json](https://github.com/asuiu/pyxtension/blob/master/Json.py) module was inspired from [addict](https://github.com/mewwts/addict) and [AttrDict](https://github.com/bcj/AttrDict),
 but it has a better performance with lower memory consumption.
+
+### Alternatives
+There are other libraries that support Fluent Interface streams as alternatives to Pyxtension, but being much more poor in features for streaming:
+- https://pypi.org/project/lazy-streams/
+- https://pypi.org/project/pystreams/
+- https://pypi.org/project/fluentpy/
