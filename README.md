@@ -464,5 +464,5 @@ Assignment as keys will still work::
 
 ### License
 pyxtension is released under a GNU Public license.
-The idea for [Json](https://github.com/asuiu/pyxtension/blob/master/Json.py) module was inspired from [addict](https://github.com/mewwts/addict>) and [AttrDict](https://github.com/bcj/AttrDict),
+The idea for [Json](https://github.com/asuiu/pyxtension/blob/master/Json.py) module was inspired from [addict](https://github.com/mewwts/addict) and [AttrDict](https://github.com/bcj/AttrDict),
 but it has a better performance with lower memory consumption.
