@@ -472,3 +472,6 @@ There are other libraries that support Fluent Interface streams as alternatives 
 - https://pypi.org/project/lazy-streams/
 - https://pypi.org/project/pystreams/
 - https://pypi.org/project/fluentpy/
+- https://github.com/matthagy/scalaps
+
+and something quite different from Fluent patterm, that makes kind of Piping: https://github.com/sspipe/sspipe and https://github.com/JulienPalard/Pipe
