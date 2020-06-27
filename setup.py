@@ -46,7 +46,7 @@ extras_require = {
 }
 
 if pyMajorVersion == "2":
-    python_requires = '>=2.6, <3'
+    python_requires = '>=2.7, <3'
 elif pyMajorVersion == "3":
     python_requires = '>=3.6, <4'
 else:
@@ -99,7 +99,6 @@ parameters = dict(name='pyxtension',
                   classifiers=[
                       "Development Status :: 5 - Production/Stable",
                       "Intended Audience :: Developers",
-                      "Programming Language :: Python :: 2.6",
                       "Programming Language :: Python :: 2.7",
                       "Programming Language :: Python :: 3.6",
                       "Programming Language :: Python :: 3.7",
