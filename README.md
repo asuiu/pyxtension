@@ -473,5 +473,8 @@ There are other libraries that support Fluent Interface streams as alternatives 
 - https://pypi.org/project/pystreams/
 - https://pypi.org/project/fluentpy/
 - https://github.com/matthagy/scalaps
+- https://pypi.org/project/infixpy/ mentioned [here](https://stackoverflow.com/questions/49001986/left-to-right-application-of-operations-on-a-list-in-python3/62585964?noredirect=1#comment111806251_62585964)
+- https://github.com/sspipe/sspipe
+
 
 and something quite different from Fluent patterm, that makes kind of Piping: https://github.com/sspipe/sspipe and https://github.com/JulienPalard/Pipe
