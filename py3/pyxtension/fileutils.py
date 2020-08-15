@@ -3,7 +3,9 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 # Purpose: utility library
 import bz2
+import csv
 import gzip
+import io
 import lzma
 import sys
 import time
@@ -12,14 +14,19 @@ from bz2 import BZ2File
 from collections import OrderedDict
 from gzip import GzipFile
 from math import floor, log10
-from typing import Optional, Callable, TextIO, Union, BinaryIO, TypeVar
+from pathlib import Path
+from typing import Optional, Callable, TextIO, Union, BinaryIO, TypeVar, Iterable, Dict, Any, Generator, Iterator
 
-K = TypeVar('K')
+from pydantic import validate_arguments
+from pyxtension import PydanticValidated
+
+_K = TypeVar('_K')
 
 __author__ = 'ASU'
 
 
-def openByExtension(filename: str, mode: str = 'r', buffering: int = -1,
+@validate_arguments
+def openByExtension(filename: Union[Path, str], mode: str = 'r', buffering: int = -1,
                     compresslevel: int = 9, **kwargs) -> Union[TextIO, BinaryIO, GzipFile, BZ2File]:
     """
     :return: Returns an opened file-like object, decompressing/compressing data depending on file extension
@@ -202,7 +209,7 @@ class Progbar(object):
     def add(self, n, values=None):
         self.update(self._seen_so_far + n, values)
 
-    def __call__(self, el: K) -> K:
+    def __call__(self, el: _K) -> _K:
         """
         It's intended to be used from a mapper over a stream of values.
         It returns the same el
@@ -215,3 +222,78 @@ class Progbar(object):
         """
         self.add(1, None)
         return el
+
+
+class ReversedCSVReader(Iterable[Dict[str, Any]], PydanticValidated):
+    @validate_arguments
+    def __init__(self, fpath: Path, buf_size: int = 4 * 1024) -> None:
+        self._fpath = fpath
+        self._buf_size = buf_size
+        self._fh = None
+
+    def _itr(self) -> Generator[Dict[str, Any], None, None]:
+        with gzip.open(self._fpath, "rt", newline='') as in_csv_file:
+            self._fh = in_csv_file
+            reader = csv.reader(in_csv_file, delimiter=',', quotechar='"')
+            input_stream = iter(reader)
+            columns = next(input_stream)
+            nr_columns = len(columns)
+            for row in input_stream:
+                yield {columns[i]: row[i] for i in range(nr_columns)}
+        self._fh = None
+
+    def __iter__(self) -> Iterator[_K]:
+        return iter(self._itr())
+
+    def __reversed__(self):
+        return self._reversed_itr()
+
+    def _reversed_byte_reader(self):
+        with gzip.open(self._fpath, "rb") as in_csv_file:
+            self._fh = in_csv_file
+            in_csv_file.seek(0, io.SEEK_END)
+            f_size = in_csv_file.tell()
+            cur_pos = f_size
+            while cur_pos > 0:
+                new_cur_pos = max(0, cur_pos - self._buf_size)
+                read_sz = cur_pos - new_cur_pos
+                cur_pos = new_cur_pos
+                if read_sz:
+                    in_csv_file.seek(new_cur_pos, io.SEEK_SET)
+                    buf = in_csv_file.read(read_sz)
+                    for b in reversed(buf):
+                        yield b
+        self._fh = None
+
+    def _split_stream_to_unicode_strings(self, s: Iterable):
+        buf = []
+        for b in s:
+            if b == ord(b'\n'):
+                if buf:
+                    yield bytes(reversed(buf)).decode('utf-8').strip()
+                buf = []
+            else:
+                buf.append(b)
+        if buf:
+            yield bytes(reversed(buf)).decode('utf-8').strip()
+
+    def _reversed_itr(self) -> Generator[Dict[str, Any], None, None]:
+        with gzip.open(self._fpath, "rt", newline='') as in_csv_file:
+            reader = csv.reader(in_csv_file, delimiter=',', quotechar='"')
+            input_stream = iter(reader)
+            columns = next(input_stream)
+            nr_columns = len(columns)
+        reversed_bytes_itr = self._reversed_byte_reader()
+        prev_row = None  # we return only prev row to avoid returning first row that contains column definitions
+        for unicode_string in self._split_stream_to_unicode_strings(reversed_bytes_itr):
+            row = unicode_string.split(",")
+            if prev_row is not None:
+                yield {columns[i]: prev_row[i] for i in range(nr_columns)}
+            prev_row = row
+
+    def close(self):
+        """
+        Attention! This will forcefully close the file and the already started generators won't work anymore.
+        """
+        if self._fh is not None:
+            self._fh.close()

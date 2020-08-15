@@ -12,3 +12,14 @@ def validate(expr, msg="Invalid argument", exc: Exception = ValidateError):
     """
     if not expr:
         raise exc(msg)
+
+class PydanticValidated:
+    @classmethod
+    def __get_validators__(cls):
+        yield cls._pydantic_validator
+
+    @classmethod
+    def _pydantic_validator(cls, v):
+        if not isinstance(v, cls):
+            raise TypeError(f'{repr(v)} is of type {type(v)} but is expected to be of {cls}')
+        return v

@@ -4,9 +4,11 @@
 # Purpose: 
 # Created: 9/22/2019
 import io
+from operator import itemgetter
+from pathlib import Path
 from unittest import TestCase, main
 
-from pyxtension.fileutils import Progbar
+from pyxtension.fileutils import Progbar, ReversedCSVReader
 from pyxtension.streams import stream
 
 __author__ = 'ASU'
@@ -126,6 +128,14 @@ class TestFileutils(TestCase):
                     '\r3/3 [==============================] - 0s 100ms/step          \n')
         self.assertEqual(expected, out.getvalue())
 
+class TestReversedCSVReader(TestCase):
+    TESTS_ROOT = Path(__file__).absolute().parent
+
+    def test_reversed_itr(self):
+        reader = ReversedCSVReader(self.TESTS_ROOT / 'data' / 'ADABTC.agg-60s.tick.csv.gz', buf_size=128)
+        in_order = list(reversed(list(stream(reader).map(itemgetter('time')))))
+        rev_order = stream(reader).reversed().map(itemgetter('time')).toList()
+        self.assertListEqual(in_order, rev_order)
 
 if __name__ == '__main__':
     main()

@@ -8,6 +8,8 @@ from functools import partial
 from io import BytesIO
 from unittest.mock import MagicMock
 
+from pydantic import validate_arguments, ValidationError
+
 from pyxtension.Json import Json, JsonList
 from pyxtension.streams import defaultstreamdict, sdict, slist, sset, stream, TqdmMapper
 
@@ -926,6 +928,31 @@ class StreamTestCase(unittest.TestCase):
         expected = rf'\r0it \[00:00, {FLT}it/s\]' \
                    rf'(\r{N}it \[00:00, {FLT}it/s\]\n)?'
         self.assertRegex(out.getvalue(), expected)
+
+    def test_pydantic_stream_validation(self):
+        @validate_arguments
+        def f(x: stream[int]):
+            return x
+
+        l = [1, 2]
+        s = stream(l)
+        self.assertEqual(f(s).toList(), l)
+        with self.assertRaises(ValidationError):
+            f(l)
+
+    def test_pydantic_slist_validation(self):
+        @validate_arguments
+        def f(x: slist[int]):
+            return x
+
+        s = stream([1, 2])
+        self.assertEqual(f(s.toList()), [1, 2])
+        self.assertEqual(f({1, 2}), [1, 2], "Expect pydantic to convert automatically set to list")
+
+        with self.assertRaises(ValidationError):
+            f(dict())
+        with self.assertRaises(ValidationError):
+            f(range(3))
 
 
 """

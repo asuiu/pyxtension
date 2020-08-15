@@ -23,7 +23,7 @@ from types import GeneratorType
 from typing import AbstractSet, Any, BinaryIO, Callable, Dict, Generator, Iterable, Iterator, List, Mapping, MutableSet, \
     NamedTuple, Optional, overload, Set, Tuple, TypeVar, Union
 
-from pyxtension import validate
+from pyxtension import validate, PydanticValidated
 
 ifilter = filter
 imap = map
@@ -1009,7 +1009,7 @@ class _IStream(Iterable[_K], ABC):
         return stream(lambda: indexIgnorer(indexSet, self))
 
 
-class stream(_IStream, Iterable[_K]):
+class stream(_IStream, Iterable[_K], PydanticValidated):
     def __init__(self, itr: Optional[Union[Iterator[_K], Callable[[], Iterable[_K]]]] = None):
         self._itr, self._f = self._init_itr(itr)
 
