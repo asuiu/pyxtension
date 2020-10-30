@@ -23,6 +23,8 @@ from types import GeneratorType
 from typing import AbstractSet, Any, BinaryIO, Callable, Dict, Generator, Iterable, Iterator, List, Mapping, MutableSet, \
     NamedTuple, Optional, overload, Set, Tuple, TypeVar, Union
 
+from tblib import pickling_support
+
 from pyxtension import validate, PydanticValidated
 
 ifilter = filter
@@ -319,17 +321,33 @@ class _IStream(Iterable[_K], ABC):
             else:
                 yield newEl
 
+    @staticmethod
+    def exc_info_decorator(f: Callable[[_K], _V], el: _K) -> Union[MapException, _V]:
+        """This decorates f to pass the exception traceback properly"""
+        try:
+            return f(el)
+        except Exception as e:
+            pickling_support.install(e)
+            return MapException(sys.exc_info())
+
     def __mp_pool_generator(self, f: Callable[[_K], _V], poolSize: int, bufferSize: int) -> Generator[_V, None, None]:
         p = Pool(poolSize)
-        for el in p.imap(f, self, chunksize=bufferSize):
+        decorated_f_with_exc_passing = partial(self.exc_info_decorator, f)
+        for el in p.imap(decorated_f_with_exc_passing, self, chunksize=bufferSize):
+            if isinstance(el, MapException):
+                raise el.exc_info[0](el.exc_info[1]).with_traceback(el.exc_info[2])
             yield el
         p.close()
         p.join()
 
-    def __mp_fast_pool_generator(self, f: Callable[[_K], _V], poolSize: int, bufferSize: int) -> Generator[_V, None, None]:
+    def __mp_fast_pool_generator(self, f: Callable[[_K], _V], poolSize: int, bufferSize: int
+                                 ) -> Generator[_V, None, None]:
         p = Pool(poolSize)
         try:
-            for el in p.imap_unordered(f, iter(self), chunksize=bufferSize):
+            decorated_f_with_exc_passing = partial(self.exc_info_decorator, f)
+            for el in p.imap_unordered(decorated_f_with_exc_passing, iter(self), chunksize=bufferSize):
+                if isinstance(el, MapException):
+                    raise el.exc_info[0](el.exc_info[1]).with_traceback(el.exc_info[2])
                 yield el
         except GeneratorExit:
             p.terminate()
@@ -353,7 +371,7 @@ class _IStream(Iterable[_K], ABC):
         return stream(partial(itertools.starmap, f, self))
 
     def mpmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
-              bufferSize: Optional[int] = None) -> 'stream[_V]':
+              bufferSize: Optional[int] = 1) -> 'stream[_V]':
         """
         Parallel ordered map using multiprocessing.Pool.imap
         :param poolSize: number of processes in Pool
@@ -371,11 +389,12 @@ class _IStream(Iterable[_K], ABC):
 
         return stream(self.__mp_pool_generator(f, poolSize, bufferSize))
 
-    def mpfastmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[_V]':
+    def mpfastmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
+                  bufferSize: Optional[int] = 1) -> 'stream[_V]':
         """
         Parallel unordered map using multiprocessing.Pool.imap_unordered
         :param poolSize: number of processes in Pool
-        :param bufferSize: passed as chunksize param to imap()
+        :param bufferSize: passed as chunksize param to imap_unordered(), so it default to 1 as imap_unordered
         """
         # Validations
         if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:

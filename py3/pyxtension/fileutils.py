@@ -9,7 +9,6 @@ import io
 import lzma
 import sys
 import time
-
 from bz2 import BZ2File
 from collections import OrderedDict
 from gzip import GzipFile
@@ -18,6 +17,8 @@ from pathlib import Path
 from typing import Optional, Callable, TextIO, Union, BinaryIO, TypeVar, Iterable, Dict, Any, Generator, Iterator
 
 from pydantic import validate_arguments
+from typing.io import IO
+
 from pyxtension import PydanticValidated
 
 _K = TypeVar('_K')
@@ -226,13 +227,19 @@ class Progbar(object):
 
 class ReversedCSVReader(Iterable[Dict[str, Any]], PydanticValidated):
     @validate_arguments
-    def __init__(self, fpath: Path, buf_size: int = 4 * 1024) -> None:
+    def __init__(self, fpath: Path, buf_size: int = 4 * 1024, opener: Callable[..., IO] = gzip.open) -> None:
+        """
+        :param opener: should accept next parameters ([filename],mode:str, newline:str)
+                The filename argument can be an actual filename (a str or bytes object),
+                or an existing file object to read from or write to.
+        """
         self._fpath = fpath
+        self._opener = opener
         self._buf_size = buf_size
         self._fh = None
 
     def _itr(self) -> Generator[Dict[str, Any], None, None]:
-        with gzip.open(self._fpath, "rt", newline='') as in_csv_file:
+        with self._opener(self._fpath, mode="rt", newline='') as in_csv_file:
             self._fh = in_csv_file
             reader = csv.reader(in_csv_file, delimiter=',', quotechar='"')
             input_stream = iter(reader)
@@ -249,7 +256,7 @@ class ReversedCSVReader(Iterable[Dict[str, Any]], PydanticValidated):
         return self._reversed_itr()
 
     def _reversed_byte_reader(self):
-        with gzip.open(self._fpath, "rb") as in_csv_file:
+        with self._opener(self._fpath, "rb") as in_csv_file:
             self._fh = in_csv_file
             in_csv_file.seek(0, io.SEEK_END)
             f_size = in_csv_file.tell()
@@ -278,7 +285,7 @@ class ReversedCSVReader(Iterable[Dict[str, Any]], PydanticValidated):
             yield bytes(reversed(buf)).decode('utf-8').strip()
 
     def _reversed_itr(self) -> Generator[Dict[str, Any], None, None]:
-        with gzip.open(self._fpath, "rt", newline='') as in_csv_file:
+        with self._opener(self._fpath, "rt", newline='') as in_csv_file:
             reader = csv.reader(in_csv_file, delimiter=',', quotechar='"')
             input_stream = iter(reader)
             columns = next(input_stream)

@@ -11,7 +11,7 @@ from shutil import copy, rmtree
 __author__ = 'ASU'
 
 # Bump up this version
-VERSION = '1.13.12'
+VERSION = '1.13.14'
 
 from setuptools import setup
 from setuptools.command.install import install
@@ -39,9 +39,10 @@ for fname in [f for f in os.listdir(src_dir) if f.endswith(".py")]:
 
 long_description = open('README.rst', "rt").read()
 
-install_requires = ['tqdm>=4.41.1;python_version>="3"']
+install_requires = ['tqdm>=4.41.1;python_version>="3"', 'pydantic>=1.6.1;python_version>="3"',
+                    'tblib>=1.7.0;python_version>="3"']
 extras_require = {
-    'dev':  ['mock;python_version<"3"'],
+    'dev': ['mock;python_version<"3"'],
     'test': ['mock;python_version<"3"']
 }
 
@@ -55,7 +56,7 @@ else:
 
 class InstallCommand(install, object):
     user_options = install.user_options + [('py2', None, "Forces to build Py2 package even if run from Py3")]
-    
+
     def initialize_options(self):
         super(InstallCommand, self).initialize_options()
         self.py2 = None
@@ -63,15 +64,15 @@ class InstallCommand(install, object):
 
 class BdistWheelCommand(bdist_wheel, object):
     user_options = bdist_wheel.user_options + [('py2', None, "Forces to build Py2 package even if run from Py3")]
-    
+
     def initialize_options(self):
         super(BdistWheelCommand, self).initialize_options()
         self.py2 = None
-    
+
     def finalize_options(self):
         super(BdistWheelCommand, self).finalize_options()
         # self.root_is_pure = False
-    
+
     def get_tag(self):
         python, abi, plat = super(BdistWheelCommand, self).get_tag()
         # We don't contain any python source

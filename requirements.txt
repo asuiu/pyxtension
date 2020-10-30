@@ -1,2 +1,3 @@
 tqdm
 pydantic
+tblib==1.7.0

@@ -3,6 +3,7 @@ import pickle
 import random
 import sys
 import time
+import traceback
 import unittest
 from functools import partial
 from io import BytesIO
@@ -24,13 +25,25 @@ def PICKABLE_DUMB_FUNCTION(x):
 
 
 def PICKABLE_SLEEP_FUNC(el):
-    time.sleep(0.05)
+    time.sleep(0.005)
     return el * el
 
 
 def _rnd_sleep(i):
     time.sleep(i % 10 / 1000)
     return i * i
+
+
+class SomeCustomException(Exception):
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):  # pragma: no cover
+        return 'APIError(code=%s)' % (self.message)
+
+
+def PICKABLE_FUNCTION_RAISES(x):
+    raise SomeCustomException("")
 
 
 class SlistTestCase(unittest.TestCase):
@@ -586,15 +599,77 @@ class StreamTestCase(unittest.TestCase):
         self.assertLessEqual(len(arr), 25)
         self.assertEqual(len(res), 20)
 
-    def test_fastmap_raises_exception(self):
+    def test_traceback_right_when_fastmap_raises_builtin_exception(self):
         s = stream([None])
-        with self.assertRaises(TypeError):
-            res = s.fastmap(lambda x: x * x, poolSize=4).toSet()
+
+        def f(x):
+            return x * x
+
+        try:
+            s.fastmap(f, poolSize=4).toSet()
+        except TypeError as e:
+            line = traceback.TracebackException.from_exception(e).stack[5].line
+            self.assertEqual(line, 'return x * x')
+            return
+        self.fail("No expected exceptions has been raised")
+
+    def test_traceback_right_when_fastmap_raises_custom_exception(self):
+        class SomeCustomException(Exception):
+            def __init__(self, message):
+                self.message = message
+
+            def __str__(self):  # pragma: no cover
+                return 'APIError(code=%s)' % (self.message)
+
+        s = stream([None])
+
+        def f(x):
+            raise SomeCustomException("")
+
+        try:
+            s.fastmap(f, poolSize=4).toSet()
+        except SomeCustomException as e:
+            line = traceback.TracebackException.from_exception(e).stack[5].line
+            self.assertEqual(line, 'raise SomeCustomException("")')
+            return
+        self.fail("No expected exceptions has been raised")
+
+    def test_traceback_right_when_mpfastmap_raises_custom_exception(self):
+        s = stream([None])
+        try:
+            s.mpfastmap(PICKABLE_FUNCTION_RAISES, poolSize=4).toSet()
+        except SomeCustomException as e:
+            line = traceback.TracebackException.from_exception(e).stack[5].line
+            self.assertEqual(line, 'raise SomeCustomException("")')
+            return
+        self.fail("No expected exceptions has been raised")
+
+    def test_traceback_right_when_mpmap_raises_custom_exception(self):
+        s = stream([None])
+        try:
+            s.mpmap(PICKABLE_FUNCTION_RAISES, poolSize=4).toSet()
+        except SomeCustomException as e:
+            line = traceback.TracebackException.from_exception(e).stack[5].line
+            self.assertEqual(line, 'raise SomeCustomException("")')
+            return
+        self.fail("No expected exceptions has been raised")
+
 
     def test_mtmap_raises_exception(self):
         s = stream([None])
         with self.assertRaises(TypeError):
             res = s.mtmap(lambda x: x * x, poolSize=4).toSet()
+
+    def test_traceback_right_when_mtmap_raises_custom_exception(self):
+        s = stream([None])
+        try:
+            s.mtmap(PICKABLE_FUNCTION_RAISES, poolSize=4).toSet()
+        except SomeCustomException as e:
+            line = traceback.TracebackException.from_exception(e).stack[6].line
+            self.assertEqual(line, 'raise SomeCustomException("")')
+            return
+        self.fail("No expected exceptions has been raised")
+
 
     def test_mpfastmap_time(self):
         N = 10
@@ -844,6 +919,13 @@ class StreamTestCase(unittest.TestCase):
         s = stream(iter(range(1, 4)))
         rev = s.reversed().toList()
         self.assertListEqual(rev, [3, 2, 1])
+
+    def test_iter_continues(self):
+        s = stream(iter(range(1, 4)))
+        itr = iter(s)
+        next(itr)
+        b = [i for i in itr]
+        self.assertListEqual(b, [2, 3])
 
     def test_len(self):
         # On iterable as init
