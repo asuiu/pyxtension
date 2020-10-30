@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Optional, Callable, TextIO, Union, BinaryIO, TypeVar, Iterable, Dict, Any, Generator, Iterator
 
 from pydantic import validate_arguments
-from typing.io import IO
 
 from pyxtension import PydanticValidated
 
@@ -226,10 +225,9 @@ class Progbar(object):
 
 
 class ReversedCSVReader(Iterable[Dict[str, Any]], PydanticValidated):
-    @validate_arguments
-    def __init__(self, fpath: Path, buf_size: int = 4 * 1024, opener: Callable[..., IO] = gzip.open) -> None:
+    def __init__(self, fpath: Path, buf_size: int = 4 * 1024, opener: Any = gzip.open):
         """
-        :param opener: should accept next parameters ([filename],mode:str, newline:str)
+        :param opener: Callable[..., IO] should accept next parameters ([filename],mode:str, newline:str)
                 The filename argument can be an actual filename (a str or bytes object),
                 or an existing file object to read from or write to.
         """

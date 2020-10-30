@@ -3,6 +3,7 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 # Purpose: 
 # Created: 9/22/2019
+import gzip
 import io
 from operator import itemgetter
 from pathlib import Path
@@ -136,6 +137,14 @@ class TestReversedCSVReader(TestCase):
         in_order = list(reversed(list(stream(reader).map(itemgetter('time')))))
         rev_order = stream(reader).reversed().map(itemgetter('time')).toList()
         self.assertListEqual(in_order, rev_order)
+
+    def test_opener_nominal(self):
+        opener = lambda filename, mode, newline=None:gzip.open(filename, mode, newline=newline)
+        reader = ReversedCSVReader(self.TESTS_ROOT / 'data' / 'ADABTC.agg-60s.tick.csv.gz', buf_size=128, opener=opener)
+        in_order = list(reversed(list(stream(reader).map(itemgetter('time')))))
+        rev_order = stream(reader).reversed().map(itemgetter('time')).toList()
+        self.assertListEqual(in_order, rev_order)
+
 
 if __name__ == '__main__':
     main()
