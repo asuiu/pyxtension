@@ -317,7 +317,7 @@ class StreamTestCase(unittest.TestCase):
         l = stream(lambda: (xrange(i) for i in xrange(5))).flatMap()
         self.assertEqual(l.toList(), [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])
         self.assertEqual(l.toList(),
-                          [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])  # second time to assert the regeneration of generator
+                         [0, 0, 1, 0, 1, 2, 0, 1, 2, 3])  # second time to assert the regeneration of generator
 
     def test_flatMap_defaultIdentityFunction(self):
         l = slist(({1: 2, 3: 4}, {5: 6, 7: 8}))
@@ -326,7 +326,7 @@ class StreamTestCase(unittest.TestCase):
     def test_reduceUsesInitProperly(self):
         self.assertEqual(slist([sset((1, 2)), sset((3, 4))]).reduce(lambda x, y: x.update(y)), set((1, 2, 3, 4)))
         self.assertEqual(slist([sset((1, 2)), sset((3, 4))]).reduce(lambda x, y: x.update(y), sset()),
-                          set((1, 2, 3, 4)))
+                         set((1, 2, 3, 4)))
 
     def test_transform_nominal(self):
         s = stream(range(4))
@@ -708,7 +708,8 @@ class StreamTestCase(unittest.TestCase):
         self.assertSetEqual(res, expected)
 
     # ToDo: fix the Pool.imap not true lazyness
-    @unittest.skip("Pool.imap has bug. Workaround: https://stackoverflow.com/Questions/5318936/Python-Multiprocessing-Pool-Lazy-Iteration")
+    @unittest.skip(
+        "Pool.imap has bug. Workaround: https://stackoverflow.com/Questions/5318936/Python-Multiprocessing-Pool-Lazy-Iteration")
     def test_mpfastmap_take_less(self):
         arr = []
 
@@ -731,7 +732,7 @@ class StreamTestCase(unittest.TestCase):
         N = 10
         s = stream(xrange(N))
         t1 = time.time()
-        res = s.mpmap(PICKABLE_SLEEP_FUNC, poolSize=4).toSet()
+        res = s.mpmap(PICKABLE_SLEEP_FUNC, poolSize=10).toSet()
         dt = time.time() - t1
         expected = set(i * i for i in xrange(N))
         self.assertSetEqual(res, expected)
@@ -764,7 +765,8 @@ class StreamTestCase(unittest.TestCase):
         self.assertSetEqual(res, expected)
 
     # ToDo: fix the Pool.imap not true lazyness
-    @unittest.skip("Pool.imap has bug. Workaround: https://stackoverflow.com/Questions/5318936/Python-Multiprocessing-Pool-Lazy-Iteration")
+    @unittest.skip(
+        "Pool.imap has bug. Workaround: https://stackoverflow.com/Questions/5318936/Python-Multiprocessing-Pool-Lazy-Iteration")
     def test_mpmap_take_less(self):
         arr = []
 
@@ -964,6 +966,8 @@ class StreamTestCase(unittest.TestCase):
         self.assertRegex(out.getvalue(), expected)
 
     def test_tqdm_containers(self):
+        if sys.version_info[1] < 7:  # no support for Py3.6
+            return
         N = 4
         FLT = r'(\d+\.\d+|\?)'
         TM = r'(00:00|\?)'
@@ -1023,6 +1027,9 @@ class StreamTestCase(unittest.TestCase):
             f(l)
 
     def test_pydantic_slist_validation(self):
+        if sys.version_info[1] < 7:  # no support for Py3.6
+            return
+
         @validate_arguments
         def f(x: slist[int]):
             return x
