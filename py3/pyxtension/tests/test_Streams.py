@@ -25,8 +25,12 @@ def PICKABLE_DUMB_FUNCTION(x):
 
 
 def PICKABLE_SLEEP_FUNC(el):
-    time.sleep(0.005)
+    time.sleep(0.2)
     return el * el
+
+def PICKABLE_SLEEP_EXACT(t:float):
+    time.sleep(t)
+    return t
 
 
 def _rnd_sleep(i):
@@ -670,16 +674,27 @@ class StreamTestCase(unittest.TestCase):
             return
         self.fail("No expected exceptions has been raised")
 
-
     def test_mpfastmap_time(self):
-        N = 10
+        N = 20
         s = stream(xrange(N))
         t1 = time.time()
-        res = s.mpfastmap(PICKABLE_SLEEP_FUNC, poolSize=4).toSet()
+        res = s.mpfastmap(PICKABLE_SLEEP_FUNC, poolSize=N).toSet()
         dt = time.time() - t1
         expected = set(i * i for i in xrange(N))
         self.assertSetEqual(res, expected)
         self.assertLessEqual(dt, 2)
+
+    def test_mpfastmap_time_with_sequential_mapping(self):
+        N = 15
+        t1 = time.time()
+        s = stream([0.2]*N+[10.0]*N)
+        s = s.map(PICKABLE_SLEEP_FUNC)
+        res = s.mpfastmap(PICKABLE_SLEEP_FUNC, poolSize=N).take(N).toSet()
+        dt = time.time() - t1
+        expected = {(0.2*0.2)*(0.2*0.2),}
+        print(res)
+        self.assertSetEqual(res, expected)
+        self.assertLessEqual(dt, 4)
 
     def test_mpfastmap_nominal(self):
         s = stream(xrange(10))
