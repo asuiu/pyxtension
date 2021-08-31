@@ -11,7 +11,7 @@ from shutil import copy, rmtree
 __author__ = 'ASU'
 
 # Bump up this version
-VERSION = '1.13.15'
+VERSION = '1.13.16'
 
 from setuptools import setup
 from setuptools.command.install import install
