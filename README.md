@@ -462,6 +462,27 @@ Assignment as keys will still work::
 {'bar': 'baz'}
 ```
 
+### frozendict
+`frozendict` is a simple immutable dictionary, where you can't change the internal variables of the class, and they are all immutable objects. Reinvoking `__init__` also doesn't alter the object.
+
+The API is the same as `dict`, without methods that can change the immutability. 
+
+`frozendict` is also hashable and can be used as keys for other dictionaries, of course with the condition that all values of the frozendict are also hashable.
+
+```python
+>>> from pyxtension import frozendict
+
+>>> fd = frozendict({"A": "B", "C": "D"})
+>>> print(fd)
+{'A': 'B', 'C': 'D'}
+
+>>> fd["A"] = "C"
+TypeError: object is immutable
+
+>>> hash(fd)
+-5063792767678978828
+```
+
 ### License
 pyxtension is released under a GNU Public license.
 The idea for [Json](https://github.com/asuiu/pyxtension/blob/master/Json.py) module was inspired from [addict](https://github.com/mewwts/addict) and [AttrDict](https://github.com/bcj/AttrDict),
