@@ -704,7 +704,7 @@ class _IStream(Iterable[_K], ABC):
     def mkString(self, c) -> str:
         return self.join(c)
 
-    def batch(self, size: int) -> 'stream[_K]':
+    def batch(self, size: int) -> 'stream[slist[_K]]':
 
         def batch_gen(itr):
             while True:
