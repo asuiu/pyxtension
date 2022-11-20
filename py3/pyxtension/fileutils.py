@@ -22,7 +22,7 @@ from pyxtension import PydanticValidated
 
 _K = TypeVar('_K')
 
-__author__ = 'ASU'
+__author__ = 'andrei.suiu@gmail.com'
 
 
 @validate_arguments

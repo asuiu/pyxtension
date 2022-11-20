@@ -15,7 +15,7 @@ from abc import ABC
 from collections import abc, defaultdict
 from functools import partial, reduce
 from itertools import groupby
-from multiprocessing import cpu_count, Pool
+from multiprocessing import cpu_count
 from operator import itemgetter
 from queue import Queue
 from random import shuffle
@@ -23,6 +23,7 @@ from types import GeneratorType
 from typing import AbstractSet, Any, BinaryIO, Callable, Dict, Generator, Iterable, Iterator, List, Mapping, MutableSet, \
     NamedTuple, Optional, overload, Set, Tuple, TypeVar, Union
 
+from multiprocess.pool import Pool
 from tblib import pickling_support
 
 from pyxtension import validate, PydanticValidated
@@ -35,7 +36,7 @@ from pyxtension.fileutils import openByExtension
 
 from tqdm import tqdm
 
-__author__ = 'ASU'
+__author__ = 'andrei.suiu@gmail.com'
 
 _K = TypeVar('_K')
 _V = TypeVar('_V')
@@ -101,8 +102,8 @@ class _IStream(Iterable[_K], ABC):
             _itr = None
         else:
             raise TypeError(
-                    "Argument f to _IStream should be callable or iterable, but itr.__class__=%s" % (
-                            str(itr.__class__)))
+                "Argument f to _IStream should be callable or iterable, but itr.__class__=%s" % (
+                    str(itr.__class__)))
         return _itr, _f
 
     @staticmethod
@@ -330,30 +331,50 @@ class _IStream(Iterable[_K], ABC):
             pickling_support.install(e)
             return MapException(sys.exc_info())
 
-    def __mp_pool_generator(self, f: Callable[[_K], _V], poolSize: int, bufferSize: int) -> Generator[_V, None, None]:
-        p = Pool(poolSize)
-        decorated_f_with_exc_passing = partial(self.exc_info_decorator, f)
-        for el in p.imap(decorated_f_with_exc_passing, self, chunksize=bufferSize):
-            if isinstance(el, MapException):
-                raise el.exc_info[0](el.exc_info[1]).with_traceback(el.exc_info[2])
-            yield el
-        p.close()
-        p.join()
+    def __mp_pool_generator(self, f: Callable[[_K], _V], poolSize: Union[int, Pool], bufferSize: int) -> Generator[_V, None, None]:
+        extern_pool = False
+        if isinstance(poolSize, int):
+            p = Pool(poolSize)
+        else:
+            p = poolSize
+            extern_pool = True
+            p._repopulate_pool()
+        try:
+            decorated_f_with_exc_passing = partial(self.exc_info_decorator, f)
+            for el in p.imap(decorated_f_with_exc_passing, self, chunksize=bufferSize):
+                if isinstance(el, MapException):
+                    raise el.exc_info[0](el.exc_info[1]).with_traceback(el.exc_info[2])
+                yield el
+        except GeneratorExit as e:
+            if not extern_pool:
+                p.terminate()
+        finally:
+            if not extern_pool:
+                p.close()
+                p.join()
 
-    def __mp_fast_pool_generator(self, f: Callable[[_K], _V], poolSize: int, bufferSize: int
+    def __mp_fast_pool_generator(self, f: Callable[[_K], _V], poolSize:  Union[int, Pool], bufferSize: int
                                  ) -> Generator[_V, None, None]:
-        p = Pool(poolSize)
+        extern_pool = False
+        if isinstance(poolSize, int):
+            p = Pool(poolSize)
+        else:
+            p = poolSize
+            extern_pool = True
+            p._repopulate_pool()
         try:
             decorated_f_with_exc_passing = partial(self.exc_info_decorator, f)
             for el in p.imap_unordered(decorated_f_with_exc_passing, iter(self), chunksize=bufferSize):
                 if isinstance(el, MapException):
                     raise el.exc_info[0](el.exc_info[1]).with_traceback(el.exc_info[2])
                 yield el
-        except GeneratorExit:
-            p.terminate()
+        except GeneratorExit as e:
+            if not extern_pool:
+                p.terminate()
         finally:
-            p.close()
-            p.join()
+            if not extern_pool:
+                p.close()
+                p.join()
 
     @staticmethod
     def __unique_generator(itr, f):
@@ -370,26 +391,33 @@ class _IStream(Iterable[_K], ABC):
     def starmap(self, f: Callable[[_K], _V]) -> 'stream[_V]':
         return stream(partial(itertools.starmap, f, self))
 
-    def mpmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
+    def mpmap(self, f: Callable[[_K], _V], poolSize: Union[int, Pool] = cpu_count(),
               bufferSize: Optional[int] = 1) -> 'stream[_V]':
         """
         Parallel ordered map using multiprocessing.Pool.imap
-        :param poolSize: number of processes in Pool
+        :param poolSize: number of processes in Pool or a multiprocess.Pool object for the Pool reuse
         :param bufferSize: passed as chunksize param to imap()
         """
         # Validations
-        if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:
-            raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
-        elif poolSize == 1:
-            return self.map(f)
+        validate(isinstance(poolSize, (int, Pool)), "mpmap: poolSize should be an integer or multiprocess.Pool",
+                 TypeError)
+        if isinstance(poolSize, int):
+            if not 0 < poolSize <= 2 ** 12:
+                raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+            elif poolSize == 1:
+                return self.map(f)
         if bufferSize is None:
-            bufferSize = poolSize * 2
+            if isinstance(poolSize, int):
+                bufferSize = poolSize * 2
+            else:
+                bufferSize = poolSize._processes * 2
+        validate(isinstance(bufferSize, int), "mpmap: bufferSize should be an integer", TypeError)
         if not isinstance(bufferSize, int) or bufferSize <= 0 or bufferSize > 2 ** 12:
             raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
 
         return stream(self.__mp_pool_generator(f, poolSize, bufferSize))
 
-    def mpfastmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
+    def mpfastmap(self, f: Callable[[_K], _V], poolSize:  Union[int, Pool] = cpu_count(),
                   bufferSize: Optional[int] = 1) -> 'stream[_V]':
         """
         Parallel unordered map using multiprocessing.Pool.imap_unordered
@@ -397,18 +425,26 @@ class _IStream(Iterable[_K], ABC):
         :param bufferSize: passed as chunksize param to imap_unordered(), so it default to 1 as imap_unordered
         """
         # Validations
-        if not isinstance(poolSize, int) or poolSize <= 0 or poolSize > 2 ** 12:
-            raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
-        elif poolSize == 1:
-            return self.map(f)
+        validate(isinstance(poolSize, (int, Pool)), "mpmap: poolSize should be an integer or multiprocess.Pool",
+                 TypeError)
+        if isinstance(poolSize, int):
+            if not 0 < poolSize <= 2 ** 12:
+                raise ValueError("poolSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
+            elif poolSize == 1:
+                return self.map(f)
         if bufferSize is None:
-            bufferSize = poolSize * 2
+            if isinstance(poolSize, int):
+                bufferSize = poolSize * 2
+            else:
+                bufferSize = poolSize._processes * 2
+        validate(isinstance(bufferSize, int), "mpmap: bufferSize should be an integer", TypeError)
         if not isinstance(bufferSize, int) or bufferSize <= 0 or bufferSize > 2 ** 12:
             raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
 
         return stream(self.__mp_fast_pool_generator(f, poolSize, bufferSize))
 
-    def fastmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None) -> 'stream[_V]':
+    def fastmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
+                bufferSize: Optional[int] = None) -> 'stream[_V]':
         """
         Parallel unordered map using multithreaded pool.
         It spawns at most poolSize threads and applies the f function.
@@ -585,7 +621,7 @@ class _IStream(Iterable[_K], ABC):
         else:
             return reduce(f, self, init)
 
-    def transform(self, f: Callable[[Iterable[_K]], Iterable[_V]]) ->'stream[_V]':
+    def transform(self, f: Callable[[Iterable[_K]], Iterable[_V]]) -> 'stream[_V]':
         return stream(partial(f, self))
 
     def shuffle(self, random=None) -> 'slist[_K]':
@@ -972,7 +1008,8 @@ class _IStream(Iterable[_K], ABC):
         """
         return stream(tqdm(iterable=self, desc=desc, total=total, leave=leave,
                            file=file, ncols=ncols, mininterval=mininterval, maxinterval=maxinterval,
-                           ascii=ascii, unit=unit, unit_scale=unit_scale, dynamic_ncols=dynamic_ncols, smoothing=smoothing,
+                           ascii=ascii, unit=unit, unit_scale=unit_scale, dynamic_ncols=dynamic_ncols,
+                           smoothing=smoothing,
                            initial=initial, position=position, postfix=postfix,
                            gui=gui, **kwargs))
 

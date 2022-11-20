@@ -7,7 +7,7 @@ import unittest
 from pyxtension.Json import Json, JsonList, FrozenJson
 from pyxtension.streams import stream, sdict
 
-__author__ = 'ASU'
+__author__ = 'andrei.suiu@gmail.com'
 
 
 class JsonTestCase(unittest.TestCase):

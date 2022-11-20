@@ -7,7 +7,7 @@ from unittest import TestCase, main
 
 from pyxtension.streams import SynchronizedBufferedStream, slist
 
-__author__ = 'ASU'
+__author__ = 'andrei.suiu@gmail.com'
 
 
 class TestSynchronizedBufferedStream(TestCase):

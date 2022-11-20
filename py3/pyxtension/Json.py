@@ -13,7 +13,7 @@ from typing import MutableMapping
 
 from pyxtension.streams import *
 
-__author__ = 'ASU'
+__author__ = 'andrei.suiu@gmail.com'
 supermethod = lambda self: super(self.__class__, self)
 
 

@@ -8,7 +8,7 @@ import time
 
 from typing import Union, Callable
 
-__author__ = 'ASU'
+__author__ = 'andrei.suiu@gmail.com'
 
 
 class ContextLock():

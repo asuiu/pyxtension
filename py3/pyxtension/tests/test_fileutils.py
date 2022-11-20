@@ -12,7 +12,7 @@ from unittest import TestCase, main
 from pyxtension.fileutils import Progbar, ReversedCSVReader
 from pyxtension.streams import stream
 
-__author__ = 'ASU'
+__author__ = 'andrei.suiu@gmail.com'
 
 
 class TestFileutils(TestCase):

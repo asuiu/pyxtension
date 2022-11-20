@@ -1,4 +1,5 @@
 import io
+import os
 import pickle
 import random
 import sys
@@ -9,6 +10,7 @@ from functools import partial
 from io import BytesIO
 from unittest.mock import MagicMock
 
+from multiprocess.pool import Pool
 from pydantic import validate_arguments, ValidationError
 
 from pyxtension.Json import Json, JsonList
@@ -17,7 +19,7 @@ from pyxtension.streams import defaultstreamdict, sdict, slist, sset, stream, Tq
 ifilter = filter
 xrange = range
 
-__author__ = 'ASU'
+__author__ = 'andrei.suiu@gmail.com'
 
 
 def PICKABLE_DUMB_FUNCTION(x):
@@ -28,7 +30,8 @@ def PICKABLE_SLEEP_FUNC(el):
     time.sleep(0.2)
     return el * el
 
-def PICKABLE_SLEEP_EXACT(t:float):
+
+def PICKABLE_SLEEP_EXACT(t: float):
     time.sleep(t)
     return t
 
@@ -204,7 +207,14 @@ class SsetTestCase(unittest.TestCase):
         self.assertIsInstance(s3, sset)
         self.assertSetEqual(s3, {3, 4})
 
+
 class StreamTestCase(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.N_processes = 10
+        cls.pool = Pool(cls.N_processes)
+
     def setUp(self):
         self.s = lambda: stream((1, 2, 3))
 
@@ -598,6 +608,7 @@ class StreamTestCase(unittest.TestCase):
         def m(i):
             arr.append(i)
             return i
+
         s = stream(range(100)).map(m).mtmap(lambda x: x, poolSize=10, bufferSize=5).take(20)
         res = s.toList()
         self.assertLessEqual(len(arr), 25)
@@ -658,7 +669,6 @@ class StreamTestCase(unittest.TestCase):
             return
         self.fail("No expected exceptions has been raised")
 
-
     def test_mtmap_raises_exception(self):
         s = stream([None])
         with self.assertRaises(TypeError):
@@ -674,25 +684,37 @@ class StreamTestCase(unittest.TestCase):
             return
         self.fail("No expected exceptions has been raised")
 
+    def test_mpmap_lambda(self):
+        s = stream(range(100))
+        res = s.mpmap(lambda x: x * x, poolSize=self.pool).toList()
+        expected = [i * i for i in xrange(100)]
+        self.assertListEqual(res, expected)
+
+    def test_mpmap_pids(self):
+        s = stream(range(100))
+        distinct_pids = s.mpmap(lambda x: os.getpid(), poolSize=self.pool).toSet()
+        self.assertGreaterEqual(len(distinct_pids), 2)
+        self.assertEqual(self.N_processes, self.pool._processes)
+        self.assertNotIn(os.getpid(), distinct_pids)
+
     def test_mpfastmap_time(self):
-        N = 20
+        N = self.N_processes
         s = stream(xrange(N))
         t1 = time.time()
-        res = s.mpfastmap(PICKABLE_SLEEP_FUNC, poolSize=N).toSet()
+        res = s.mpfastmap(PICKABLE_SLEEP_FUNC, poolSize=self.pool).toSet()
         dt = time.time() - t1
         expected = set(i * i for i in xrange(N))
         self.assertSetEqual(res, expected)
-        self.assertLessEqual(dt, 2)
+        self.assertLessEqual(dt, 4)
 
     def test_mpfastmap_time_with_sequential_mapping(self):
-        N = 15
+        N = self.N_processes
         t1 = time.time()
-        s = stream([0.2]*N+[10.0]*N)
+        s = stream([0.2] * N + [10.0] * N)
         s = s.map(PICKABLE_SLEEP_FUNC)
-        res = s.mpfastmap(PICKABLE_SLEEP_FUNC, poolSize=N).take(N).toSet()
+        res = s.mpfastmap(PICKABLE_SLEEP_FUNC, poolSize=self.pool).take(N).toSet()
         dt = time.time() - t1
-        expected = {(0.2*0.2)*(0.2*0.2),}
-        print(res)
+        expected = {(0.2 * 0.2) * (0.2 * 0.2), }
         self.assertSetEqual(res, expected)
         self.assertLessEqual(dt, 4)
 
@@ -1042,7 +1064,13 @@ class StreamTestCase(unittest.TestCase):
             f(l)
 
     def test_pydantic_slist_validation(self):
+        """
+        For some reasons, pydantic behaves distinctly on Windows and Linux.
+        On Win this test passes, and on Linux pydantic works differently and it fails.
+        """
         if sys.version_info[1] < 7:  # no support for Py3.6
+            return
+        if os.name != 'nt':
             return
 
         @validate_arguments
