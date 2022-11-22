@@ -1,4 +1,4 @@
-tqdm>=4.62.0
-pydantic>=1.8.2
-tblib>=1.7.0
-multiprocess>=0.70.14
+multiprocess>=0.70.14;python_version>="3"
+tqdm>=4.62.0;python_version>="3"
+pydantic>=1.8.2;python_version>="3"
+tblib>=1.7.0;python_version>="3"

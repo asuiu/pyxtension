@@ -11,7 +11,7 @@ from shutil import copy, rmtree
 __author__ = 'ASU'
 
 # Bump up this version
-VERSION = '1.14.0'
+VERSION = '1.14.1'
 
 from setuptools import setup
 from setuptools.command.install import install
@@ -39,8 +39,9 @@ for fname in [f for f in os.listdir(src_dir) if f.endswith(".py")]:
 
 long_description = open('README.rst', "rt").read()
 
-install_requires = ['tqdm>=4.41.1;python_version>="3"', 'pydantic>=1.6.1;python_version>="3"',
-                    'tblib>=1.7.0;python_version>="3"']
+with open("requirements.txt") as fp:
+    install_requires = fp.read().strip().split("\n")
+
 extras_require = {
     'dev': ['mock;python_version<"3"'],
     'test': ['mock;python_version<"3"']
@@ -93,6 +94,7 @@ parameters = dict(name='pyxtension',
                   python_requires=python_requires,
                   install_requires=install_requires,
                   extras_require=extras_require,
+                  data_files=[(".", ["requirements.txt",])],
                   cmdclass={
                       'install':     InstallCommand,
                       'bdist_wheel': BdistWheelCommand
