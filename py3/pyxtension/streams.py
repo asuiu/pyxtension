@@ -331,7 +331,8 @@ class _IStream(Iterable[_K], ABC):
             pickling_support.install(e)
             return MapException(sys.exc_info())
 
-    def __mp_pool_generator(self, f: Callable[[_K], _V], poolSize: Union[int, Pool], bufferSize: int) -> Generator[_V, None, None]:
+    def __mp_pool_generator(self, f: Callable[[_K], _V], poolSize: Union[int, Pool], bufferSize: int) -> Generator[
+        _V, None, None]:
         extern_pool = False
         if isinstance(poolSize, int):
             p = Pool(poolSize)
@@ -353,7 +354,7 @@ class _IStream(Iterable[_K], ABC):
                 p.close()
                 p.join()
 
-    def __mp_fast_pool_generator(self, f: Callable[[_K], _V], poolSize:  Union[int, Pool], bufferSize: int
+    def __mp_fast_pool_generator(self, f: Callable[[_K], _V], poolSize: Union[int, Pool], bufferSize: int
                                  ) -> Generator[_V, None, None]:
         extern_pool = False
         if isinstance(poolSize, int):
@@ -417,7 +418,16 @@ class _IStream(Iterable[_K], ABC):
 
         return stream(self.__mp_pool_generator(f, poolSize, bufferSize))
 
-    def mpfastmap(self, f: Callable[[_K], _V], poolSize:  Union[int, Pool] = cpu_count(),
+    def mpstarmap(self, f: Callable[[_K], _V], poolSize: Union[int, Pool] = cpu_count(),
+                  bufferSize: Optional[int] = 1) -> 'stream[_V]':
+        """
+        Parallel unordered map using multiprocessing.Pool.imap_unordered
+        :param poolSize: number of processes in Pool
+        :param bufferSize: passed as chunksize param to imap_unordered(), so it default to 1 as imap_unordered
+        """
+        return self.mpmap(lambda el: f(*el), poolSize, bufferSize)
+
+    def mpfastmap(self, f: Callable[[_K], _V], poolSize: Union[int, Pool] = cpu_count(),
                   bufferSize: Optional[int] = 1) -> 'stream[_V]':
         """
         Parallel unordered map using multiprocessing.Pool.imap_unordered
@@ -443,6 +453,15 @@ class _IStream(Iterable[_K], ABC):
 
         return stream(self.__mp_fast_pool_generator(f, poolSize, bufferSize))
 
+    def mpfaststarmap(self, f: Callable[[_K], _V], poolSize: Union[int, Pool] = cpu_count(),
+                      bufferSize: Optional[int] = 1) -> 'stream[_V]':
+        """
+        Parallel unordered map using multiprocessing.Pool.imap_unordered
+        :param poolSize: number of processes in Pool
+        :param bufferSize: passed as chunksize param to imap_unordered(), so it default to 1 as imap_unordered
+        """
+        return self.mpfastmap(lambda el: f(*el), poolSize, bufferSize)
+
     def fastmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
                 bufferSize: Optional[int] = None) -> 'stream[_V]':
         """
@@ -463,6 +482,17 @@ class _IStream(Iterable[_K], ABC):
 
         return stream(ItrFromFunc(lambda: self.__fastmap_generator(f, poolSize, bufferSize)))
 
+    def faststarmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
+                    bufferSize: Optional[int] = None) -> 'stream[_V]':
+        """
+        Parallel unordered starmap using multithreaded pool.
+        It spawns at most poolSize threads and applies the f function.
+        The elements in the result stream appears in the unpredicted order.
+        It's most usefull for I/O or CPU intensive consuming functions.
+        :param poolSize: number of threads to spawn
+        """
+        return self.fastmap(lambda el: f(*el), poolSize, bufferSize)
+
     def mtmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
               bufferSize: Optional[int] = None) -> 'stream[_V]':
         """
@@ -482,6 +512,17 @@ class _IStream(Iterable[_K], ABC):
             raise ValueError("bufferSize should be an integer between 1 and 2^12. Received: %s" % str(poolSize))
 
         return stream(ItrFromFunc(lambda: self.__mtmap_generator(f, poolSize, bufferSize)))
+
+    def mtstarmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(),
+                  bufferSize: Optional[int] = None) -> 'stream[_V]':
+        """
+        Parallel ORDERED map using multithreaded pool.
+        It spawns at most poolSize threads and applies the f function.
+        The elements in the result stream appears in the same order as at input.
+        It's most usefull for I/O or CPU intensive consuming functions.
+        :param poolSize: number of threads to spawn
+        """
+        return self.mtmap(lambda el: f(*el), poolSize, bufferSize)
 
     # ToDo - add fastFlatMap to Python 2.x version
     def fastFlatMap(self, predicate: Callable[[_K], Iterable[_V]] = _IDENTITY_FUNC, poolSize: int = cpu_count(),
@@ -514,6 +555,14 @@ class _IStream(Iterable[_K], ABC):
         :param predicate: If predicate is None, return the items that are true.
         """
         return stream(ItrFromFunc(lambda: filter(predicate, self)))
+
+    def starfilter(self, predicate: Callable[[_K], bool]) -> 'stream[_K]':
+        """
+        :param predicate:  Applies predicate unpacks the current item when calling predicate function.
+            If predicate is None, returns the items that are true,
+        :return: stream over iterable containing only the items where pred(*item) is True.
+        """
+        return self.filter(lambda el: predicate(*el))
 
     def reversed(self) -> 'stream[_K]':
         try:
@@ -741,6 +790,13 @@ class _IStream(Iterable[_K], ABC):
         return self.join(c)
 
     def batch(self, size: int) -> 'stream[slist[_K]]':
+        """
+        :param size: size of batch
+        It groups elements of stream into batches of size `size` and returns stream of batches which are slists
+
+        >>> stream(range(10)).batch(3).toList()
+        [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]]
+        """
 
         def batch_gen(itr):
             while True:

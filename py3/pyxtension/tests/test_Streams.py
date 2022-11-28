@@ -249,6 +249,11 @@ class StreamTestCase(unittest.TestCase):
         self.assertEqual(s.toList(), [0, 2, 4])
         self.assertEqual(s.toList(), [0, 2, 4])
 
+    def test_starfilter(self):
+        s = stream([(2, 5), (3, 2), (10, 3)]).starfilter(lambda x, y: x > y)
+        self.assertEqual(s.toList(), [(3, 2), (10, 3)])
+        self.assertEqual(s.toList(), [(3, 2), (10, 3)])
+
     def test_streamExists(self):
         s = stream([0, 1])
         self.assertEqual(s.exists(lambda e: e == 0), True)
@@ -318,6 +323,26 @@ class StreamTestCase(unittest.TestCase):
         s = stream([(2, 5), (3, 2), (10, 3)]).starmap(pow)
         self.assertListEqual(s.toList(), [32, 9, 1000])
         self.assertListEqual(s.toList(), [32, 9, 1000])
+
+    def test_faststarmap(self):
+        s = stream([(2, 5), (3, 2), (10, 3)]).faststarmap(pow)
+        self.assertSetEqual(s.toSet(), {32, 9, 1000})
+        self.assertSetEqual(s.toSet(), {32, 9, 1000})
+
+    def test_mpstarmap(self):
+        s = stream([(2, 5), (3, 2), (10, 3)]).mpstarmap(pow)
+        self.assertListEqual(s.toList(), [32, 9, 1000])
+        self.assertListEqual(s.toList(), [32, 9, 1000])
+
+    def test_mtstarmap(self):
+        s = stream([(2, 5), (3, 2), (10, 3)]).mtstarmap(pow)
+        self.assertListEqual(s.toList(), [32, 9, 1000])
+        self.assertListEqual(s.toList(), [32, 9, 1000])
+
+    def test_mpfaststarmap(self):
+        s = stream([(2, 5), (3, 2), (10, 3)]).mpfaststarmap(pow)
+        self.assertSetEqual(s.toSet(), {32, 9, 1000})
+        self.assertSetEqual(s.toSet(), {32, 9, 1000})
 
     def test_flatMap_nominal(self):
         s = stream([[1, 2], [3, 4], [4, 5]])
