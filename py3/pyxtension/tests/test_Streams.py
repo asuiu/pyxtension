@@ -1112,6 +1112,10 @@ class StreamTestCase(unittest.TestCase):
         with self.assertRaises(ValidationError):
             f(range(3))
 
+    def test_to_list(self):
+        s = stream(range(3))
+        self.assertListEqual(s.to_list(), [0, 1, 2])
+
 
 """
 Allow for these test cases to be run from the command line

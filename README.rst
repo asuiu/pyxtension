@@ -357,6 +357,14 @@ identic with join(f)
 
     the same behavior with itertools.izip()
 
+**throttle(max_req: int, interval: float)**
+'''''''''
+
+::
+
+    throttles to process at most max_req elements pe every 'interval' seconds.
+
+
 \*\*unique(predicate=\_IDENTITY\_FUNC)\*\*
 Returns a stream of unique (according to predicate) elements appearing in the same order as in original stream
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -435,6 +443,20 @@ defaultstreamdict
 
 Inherits ``streams.sdict`` and adds functionality of
 ``collections.defaultdict`` from stdlib
+
+`throttler <https://github.com/asuiu/pyxtension/blob/master/throttler.py>`__
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Thread-safe time throttler that can be attached on a stream to limit the number of calls per time interval.
+Example:
+
+.. code:: python
+
+        > from pyxtension.throttler import Throttler
+        > throttler = Throttler(5, 10)
+        > stream(range(100)).map(throttler.throttle).map(print).to_list()
+
+
+it will throttle the stream to max 5 calls per every 10 seconds.
 
 `Json <https://github.com/asuiu/pyxtension/blob/master/Json.py>`__
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

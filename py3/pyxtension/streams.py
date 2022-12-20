@@ -27,6 +27,7 @@ from typing import AbstractSet, Any, BinaryIO, Callable, Dict, Generator, Iterab
 from tblib import pickling_support
 
 from pyxtension import validate, PydanticValidated
+from pyxtension.throttler import Throttler
 
 ifilter = filter
 imap = map
@@ -659,6 +660,11 @@ class _IStream(Iterable[_K], ABC):
     def toMap(self: 'stream[Tuple[_T,_V]]') -> 'sdict[_T,_V]':
         return sdict(self)
 
+    to_list = toList
+    to_set = toSet
+    to_map = toMap
+    to_dict = toMap
+
     def toSumCounter(self: 'stream[Tuple[_T,_V]]') -> 'sdict[_T,_V]':
         """
         Elements should be tuples (T, V) where V can be summed
@@ -1037,6 +1043,15 @@ class _IStream(Iterable[_K], ABC):
                            smoothing=smoothing,
                            initial=initial, position=position, postfix=postfix,
                            gui=gui, **kwargs))
+
+    def throttle(self, max_req: int, interval: float) -> 'stream[_K]':
+        """
+        :param max_req: number of requests
+        :param interval: period in number of seconds
+        :return: throttled stream
+        """
+        throttler = Throttler(max_req, interval)
+        return self.map(throttler.throttle)
 
     @staticmethod
     def binaryToChunk(binaryData: bytes) -> bytes:
