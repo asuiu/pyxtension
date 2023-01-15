@@ -358,13 +358,19 @@ class _IStream(Iterable[_K], ABC):
             p.join()
 
     @staticmethod
-    def __unique_generator(itr, f):
+    def __unique_generator(itr, f: Optional[Callable[[_K], _V]]):
         st = set()
-        for el in itr:
-            m_el = f(el)
-            if m_el not in st:
-                st.add(m_el)
-                yield el
+        if f is None:
+            for el in itr:
+                if el not in st:
+                    st.add(el)
+                    yield el
+        else:
+            for el in itr:
+                m_el = f(el)
+                if m_el not in st:
+                    st.add(m_el)
+                    yield el
 
     def map(self, f: Callable[[_K], _V]) -> 'stream[_V]':
         return stream(partial(map, f, self))
@@ -610,9 +616,6 @@ class _IStream(Iterable[_K], ABC):
 
     def countByValue(self) -> 'sdict[_K,int]':
         return sdict(collections.Counter(self))
-
-    def distinct(self) -> 'stream[_K]':
-        return self.unique()
 
     @overload
     def reduce(self, f: Callable[[_K, _K], _K], init: Optional[_K] = None) -> _K:
@@ -961,14 +964,16 @@ class _IStream(Iterable[_K], ABC):
     def zip(self) -> 'stream[_V]':
         return stream(zip(*(self.toList())))
 
-    def unique(self, predicate: Callable[[_K], _V] = _IDENTITY_FUNC):
+    def distinct(self, key: Optional[Callable[[_K], _V]] = None) -> 'stream[_K]':
         """
         The stream items should be hashable and comparable.
-        :param predicate: optional, maps the elements to comparable objects
+        :param key: optional, maps the elements to comparable objects
         :return: Unique elements appearing in the same order. Following copies of same elements will be ignored.
-        :rtype: stream[U]
+        :rtype: stream[_K]
         """
-        return stream(lambda: _IStream.__unique_generator(self, predicate))
+        return stream(lambda: _IStream.__unique_generator(self, key))
+
+    unique = distinct
 
     def tqdm(self, desc: Optional[str] = None,
              total: Optional[int] = None,

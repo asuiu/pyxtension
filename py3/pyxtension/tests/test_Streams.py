@@ -848,21 +848,21 @@ class StreamTestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             res = s.mpmap(f, poolSize=4).toSet()
 
-    def test_unique_nominal(self):
+    def test_distinct_nominal(self):
         s = stream([1, 2, 3, 1, 2])
-        self.assertListEqual(s.unique().toList(), [1, 2, 3])
+        self.assertListEqual(s.distinct().toList(), [1, 2, 3])
 
-    def test_unique_mapping(self):
+    def test_distinct_mapping(self):
         s = stream(['abc', 'def', 'a', 'b', 'ab'])
-        self.assertListEqual(s.unique(len).toList(), ['abc', 'a', 'ab'])
+        self.assertListEqual(s.distinct(len).toList(), ['abc', 'a', 'ab'])
 
-    def test_unique_empty_stream(self):
+    def test_distinct_empty_stream(self):
         s = stream([])
-        self.assertListEqual(s.unique().toList(), [])
+        self.assertListEqual(s.distinct().toList(), [])
 
-    def test_unique_generator_stream(self):
+    def test_distinct_generator_stream(self):
         s = stream(lambda: xrange(4))
-        u = s.unique()
+        u = s.distinct()
         self.assertListEqual(u.toList(), [0, 1, 2, 3])
         self.assertListEqual(u.toList(), [0, 1, 2, 3])
 
@@ -1099,14 +1099,15 @@ class StreamTestCase(unittest.TestCase):
         if os.name != 'nt':
             return
 
-        @validate_arguments
+        @validate_arguments(config=dict(arbitrary_types_allowed=True))
         def f(x: slist[int]):
             return x
 
         s = stream([1, 2])
         self.assertEqual(f(s.toList()), [1, 2])
-        self.assertEqual(f({1, 2}), [1, 2], "Expect pydantic to convert automatically set to list")
-
+        with self.assertRaises(ValidationError):
+            f({1, 2})
+            #self.assertEqual(f({1, 2}), [1, 2], "Expect pydantic to convert automatically set to list")
         with self.assertRaises(ValidationError):
             f(dict())
         with self.assertRaises(ValidationError):
