@@ -5,7 +5,7 @@ pyxtension
 | |Coverage Status|
 
 `pyxtension <https://github.com/asuiu/pyxtension>`__ is a pure Python
-GNU-licensed library that includes Scala-like streams, Json with
+MIT-licensed library that includes Scala-like streams, Json with
 attribute access syntax, and other common-use stuff.
 
 Installation
