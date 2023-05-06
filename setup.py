@@ -4,14 +4,12 @@
 # Purpose: 
 # Created: 12/1/2015
 import os
-import sys
 from os.path import join
-from shutil import copy, rmtree
 
 __author__ = 'ASU'
 
 # Bump up this version
-VERSION = '1.15.0'
+VERSION = '1.16.0'
 
 from setuptools import setup
 from setuptools.command.install import install
@@ -21,38 +19,22 @@ py_modules = ['Json', 'streams', 'racelib', 'fileutils', '__init__']
 
 basedir = os.path.dirname(__file__)
 dest_package_dir = join(basedir, "pyxtension")
-try:
-    os.makedirs(dest_package_dir)
-except os.error:
-    pass
 
-pyMajorVersion = str(sys.version_info[0])
-if "--py2" in sys.argv:
-    pyMajorVersion = '2'
-
-src_dir = join(basedir, 'py' + pyMajorVersion, 'pyxtension')
-for fname in [f for f in os.listdir(src_dir) if f.endswith(".py")]:
-    copy(join(src_dir, fname), dest_package_dir)
-
-# ToDo: check if there's still BUG in twine, as if falsely reports in README.md
-#  line 34: Error: Unexpected indentation.
-
-long_description = open('README.rst', "rt").read()
+long_description = open('README.md', "rt").read()
 
 with open("requirements.txt") as fp:
     install_requires = fp.read().strip().split("\n")
 
-extras_require = {
-    'dev': ['mock;python_version<"3"'],
-    'test': ['mock;python_version<"3"']
-}
+# load test requirements
+with open("requirements-dev.txt") as fp:
+    dev_require = fp.read().strip().split("\n")
+    dev_require = [s for s in dev_require if not s.startswith(("#", "-"))]
 
-if pyMajorVersion == "2":
-    python_requires = '>=2.7, <3'
-elif pyMajorVersion == "3":
-    python_requires = '>=3.6, <4'
-else:
-    raise Exception("Unknown Python version")
+extras_require = {
+    'dev':  dev_require,
+    'test': dev_require
+}
+python_requires = '>=3.6, <4'
 
 
 class InstallCommand(install, object):
@@ -77,8 +59,6 @@ class BdistWheelCommand(bdist_wheel, object):
     def get_tag(self):
         python, abi, plat = super(BdistWheelCommand, self).get_tag()
         # We don't contain any python source
-        if pyMajorVersion == "2":
-            python, abi = 'py2', 'none'
         return python, abi, plat
 
 
@@ -106,10 +86,10 @@ parameters = dict(name='pyxtension',
                       "Programming Language :: Python :: 3.6",
                       "Programming Language :: Python :: 3.7",
                       "Programming Language :: Python :: 3.8",
+                      "Programming Language :: Python :: 3.9",
+                      "Programming Language :: Python :: 3.10",
+                      "Programming Language :: Python :: 3.11",
                       "Programming Language :: Python :: Implementation :: CPython",
                       "Programming Language :: Python :: Implementation :: PyPy", ])
 
 setup(**parameters)
-
-# clean-up
-rmtree(dest_package_dir)

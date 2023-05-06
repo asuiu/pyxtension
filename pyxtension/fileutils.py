@@ -214,7 +214,7 @@ class Progbar(object):
         It's intended to be used from a mapper over a stream of values.
         It returns the same el
         # Example:
-        >>> from pyxtension.fileutils import Progbar
+        >>> from pyxtension import Progbar
         >>> stream(range(3)).map(Progbar(3)).size()
         1/3 [=========>....................] - ETA: 0s
         2/3 [===================>..........] - ETA: 0s

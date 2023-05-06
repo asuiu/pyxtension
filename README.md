@@ -355,13 +355,14 @@ Inherits `streams.sdict` and adds functionality  of `collections.defaultdict` fr
 ### [Json](https://github.com/asuiu/pyxtension/blob/master/Json.py)
 
 [Json](https://github.com/asuiu/pyxtension/blob/master/Json.py) is a module that provides mapping objects that allow their elements to be accessed both as keys and as attributes:
+
 ```python
-    > from pyxtension.Json import Json
-    > a = Json({'foo': 'bar'})
-    > a.foo
-    'bar'
-    > a['foo']
-    'bar'
+    > from pyxtension import Json
+> a = Json({'foo': 'bar'})
+> a.foo
+'bar'
+> a['foo']
+'bar'
 ```
 
 Attribute access makes it easy to create convenient, hierarchical settings objects:

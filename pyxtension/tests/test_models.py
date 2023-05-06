@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from tsx import TS
 
-from py3.pyxtension.models import ExtModel
+from pyxtension.models import ExtModel
 
 
 class TestExtModel(TestCase):
