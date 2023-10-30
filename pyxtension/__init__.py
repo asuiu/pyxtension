@@ -4,8 +4,8 @@ from typing import Type, Any
 
 
 class ValidateError(ValueError):
-    def __init__(self, args):
-        ValueError.__init__(self, args)
+    def __init__(self, *args, **kwargs):
+        ValueError.__init__(self, *args, **kwargs)
 
 
 def validate(expr, msg="Invalid argument", exc: 'Type[Exception]' = ValidateError):
