@@ -1,5 +1,7 @@
 # Author: ASU --<andrei.suiu@gmail.com>
-from typing import Any, Callable, cast, Optional
+import json
+from dataclasses import dataclass, fields, asdict
+from typing import Any, Callable, cast, Optional, Type
 
 from json_composite_encoder import JSONCompositeEncoder
 
@@ -14,6 +16,7 @@ class ExtModel(BaseModel):
     Extended Model with custom JSON encoder.
     Extends the standard Pydantic model functionality by allowing arbitrary types and providing custom encoding.
     """
+
     def json(
             self,
             *,
@@ -69,3 +72,58 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+def _coerce_type(type_: Type[Any], value: Any) -> Any:
+    if isinstance(value, type_):
+        return value
+    try:
+        return type_(value)
+    except (ValueError, TypeError):
+        raise ValueError(f"Cannot coerce {value!r} to {type_.__name__}")
+
+
+class BaseSmartDataclass:
+    """
+    Smart Dataclass with custom JSON encoder.
+    Performs automatic type coercion and provides custom encoding.
+    """
+
+    class Config:
+        json_encoders = {}
+
+    def __post_init__(self):
+        for field_ in fields(self):
+            value = getattr(self, field_.name)
+            coerced_value = _coerce_type(field_.type, value)
+            # Bypass the frozen nature of dataclasses to set the coerced value
+            object.__setattr__(self, field_.name, coerced_value)
+
+    def json(self, **dumps_kwargs: Any):
+        data = asdict(self)
+        combined_encoders = self._get_combined_encoders()
+        composite_encoder_builder = JSONCompositeEncoder.Builder(encoders=combined_encoders)
+        return json.dumps(data, cls=composite_encoder_builder, **dumps_kwargs)
+
+    def _get_combined_encoders(self):
+        combined_encoders = {}
+        for base in reversed(self.__class__.__mro__):
+            if hasattr(base, 'Config') and hasattr(base.Config, 'json_encoders'):
+                combined_encoders.update(base.Config.json_encoders)
+        return combined_encoders
+
+
+@dataclass
+class SmartDataclass(BaseSmartDataclass):
+    """
+    Smart Dataclass with custom JSON encoder.
+    Performs automatic type coercion and provides custom encoding.
+    """
+
+
+@dataclass(frozen=True)
+class FrozenSmartDataclass(BaseSmartDataclass):
+    """
+    Smart Immutable Dataclass with custom JSON encoder.
+    Performs automatic type coercion and provides custom encoding.
+    """
