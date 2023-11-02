@@ -2,7 +2,11 @@
 from typing import Any, Callable, cast, Optional
 
 from json_composite_encoder import JSONCompositeEncoder
-from pydantic import BaseModel, Extra
+
+try:
+    from pydantic.v1 import BaseModel, Extra
+except ImportError:
+    from pydantic import BaseModel, Extra
 
 
 class ExtModel(BaseModel):
