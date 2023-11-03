@@ -1,7 +1,7 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 import json
 from dataclasses import dataclass, fields, asdict, field, Field, MISSING
-from typing import Any, Callable, cast, Optional, Type
+from typing import Any, Callable, cast, Optional, Type, Dict
 
 from json_composite_encoder import JSONCompositeEncoder
 
@@ -74,6 +74,9 @@ class Singleton(type):
         return cls._instances[cls]
 
 
+COERCE_FIELD_NAME = "coerce"
+
+
 def _coerce_type(type_: Type[Any], value: Any) -> Any:
     if isinstance(value, type_):
         return value
@@ -83,16 +86,26 @@ def _coerce_type(type_: Type[Any], value: Any) -> Any:
         raise ValueError(f"Cannot coerce {value!r} to {type_.__name__}")
 
 
-def coercing_field(*, default=MISSING, default_factory=MISSING, init=True, repr=True,
-                   hash=None, compare=True, metadata=None) -> Field:
-    if metadata is None:
-        metadata = {"coerce": True}
-    else:
-        metadata["coerce"] = True
+def coercing_field(*, default=MISSING, default_factory=MISSING, init=True, repr=True, hash=None, compare=True, metadata=None) -> Field:
+    metadata = field_config(metadata, coerce=True)
     return field(default=default, default_factory=default_factory, init=init, repr=repr, hash=hash, compare=compare, metadata=metadata)
 
 
-class BaseSmartDataclass:
+def field_config(metadata: Optional[dict] = None, *,
+                 coerce: bool = False,
+                 encoder: Optional[Callable] = None,
+                 decoder: Optional[Callable] = None,
+                 field_name: Optional[str] = None,
+                 ) -> Optional[Dict[str, dict]]:
+    if coerce:
+        if metadata is None:
+            metadata = {}
+        metadata[COERCE_FIELD_NAME] = True
+
+    return metadata
+
+
+class _BaseJsonData:
     """
     Smart Dataclass with custom JSON encoder.
     Performs automatic type coercion and provides custom encoding.
@@ -103,7 +116,7 @@ class BaseSmartDataclass:
 
     def __post_init__(self):
         for field_ in fields(self):
-            if not field_.metadata.get("coerce", False):
+            if not field_.metadata.get(COERCE_FIELD_NAME, False):
                 continue
             value = getattr(self, field_.name)
             coerced_value = _coerce_type(field_.type, value)
@@ -116,16 +129,17 @@ class BaseSmartDataclass:
         composite_encoder_builder = JSONCompositeEncoder.Builder(encoders=combined_encoders)
         return json.dumps(data, cls=composite_encoder_builder, **dumps_kwargs)
 
-    def _get_combined_encoders(self):
+    @classmethod
+    def _get_combined_encoders(cls):
         combined_encoders = {}
-        for base in reversed(self.__class__.__mro__):
+        for base in reversed(cls.__mro__):
             if hasattr(base, 'Config') and hasattr(base.Config, 'json_encoders'):
                 combined_encoders.update(base.Config.json_encoders)
         return combined_encoders
 
 
 @dataclass
-class SmartDataclass(BaseSmartDataclass):
+class JsonData(_BaseJsonData):
     """
     Smart Dataclass with custom JSON encoder.
     Performs automatic type coercion and provides custom encoding.
@@ -133,8 +147,33 @@ class SmartDataclass(BaseSmartDataclass):
 
 
 @dataclass(frozen=True)
-class FrozenSmartDataclass(BaseSmartDataclass):
+class FrozenJsonData(_BaseJsonData):
     """
     Smart Immutable Dataclass with custom JSON encoder.
     Performs automatic type coercion and provides custom encoding.
     """
+
+
+def _jsoned_data(cls: Type, init: bool, repr: bool, eq: bool, order: bool,
+                 unsafe_hash: bool, frozen: bool, encoders: Optional[Dict[Type, Any]] = None):
+    cls.__post_init__ = _BaseJsonData.__post_init__
+    cls.json = _BaseJsonData.json
+    cls._get_combined_encoders = classmethod(_BaseJsonData._get_combined_encoders.__func__)
+    if encoders is not None:
+        new_config = type('Config', (_BaseJsonData.Config,), {'json_encoders': encoders})
+        cls.Config = new_config
+    return dataclass(cls, init=init, repr=repr, eq=eq, order=order, unsafe_hash=unsafe_hash, frozen=frozen)
+
+
+def jsoned_data(cls=None, /, *, init=True, repr=True, eq=True, order=False,
+                unsafe_hash=False, frozen=False, encoders=None):
+    def wrap(cls):
+        return _jsoned_data(cls, init, repr, eq, order, unsafe_hash, frozen, encoders)
+
+    # See if we're being called as @dataclass or @dataclass().
+    if cls is None:
+        # We're called with parens.
+        return wrap
+
+    # We're called as @dataclass without parens.
+    return wrap(cls)

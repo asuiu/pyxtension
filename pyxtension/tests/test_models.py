@@ -7,7 +7,7 @@ from unittest import TestCase
 import pandas as pd
 from tsx import TS
 
-from pyxtension.models import ExtModel, FrozenSmartDataclass, SmartDataclass, coercing_field
+from pyxtension.models import ExtModel, FrozenJsonData, JsonData, coercing_field, jsoned_data
 
 
 class TestExtModel(TestCase):
@@ -43,7 +43,7 @@ class CustomFloat(float):
 
 class TestSmartDataclass(TestCase):
     @dataclass
-    class A(SmartDataclass):
+    class A(JsonData):
         ts: TS = coercing_field()
 
         class Config:
@@ -83,7 +83,7 @@ class TestSmartDataclass(TestCase):
             pass
 
         @dataclass
-        class C(SmartDataclass):
+        class C(JsonData):
             at: ArbitraryType
 
         at = ArbitraryType()
@@ -92,7 +92,7 @@ class TestSmartDataclass(TestCase):
 
     def test_mutability(self):
         @dataclass
-        class C(SmartDataclass):
+        class C(JsonData):
             i: int
 
         c = C(i=1)
@@ -101,7 +101,7 @@ class TestSmartDataclass(TestCase):
 
     def test_pd_dataframe_member(self):
         @dataclass
-        class C(SmartDataclass):
+        class C(JsonData):
             df: pd.DataFrame
             optional_df: Optional[pd.DataFrame] = None
 
@@ -113,7 +113,7 @@ class TestSmartDataclass(TestCase):
 
     def test_explicit_coercion(self):
         @dataclass
-        class C(SmartDataclass):
+        class C(JsonData):
             i: int = coercing_field(default=0)
 
         c = C(i="1")
@@ -124,7 +124,7 @@ class TestSmartDataclass(TestCase):
 
 class TestFrozenSmartDataclass(TestCase):
     @dataclass(frozen=True)
-    class A(FrozenSmartDataclass):
+    class A(FrozenJsonData):
         ts: TS = coercing_field()
 
         class Config:
@@ -157,7 +157,41 @@ class TestFrozenSmartDataclass(TestCase):
 
     def test_mutability(self):
         @dataclass(frozen=True)
-        class C(FrozenSmartDataclass):
+        class C(FrozenJsonData):
+            i: int
+
+        c = C(i=1)
+        with self.assertRaises(FrozenInstanceError):
+            c.i = 2
+
+
+class TestJsonedData(TestCase):
+    @jsoned_data(frozen=True, encoders={TS: TS.as_iso.fget})
+    class A:
+        ts: TS = coercing_field()
+
+    @jsoned_data(frozen=True, encoders={CustomFloat: lambda cf: cf + 0.5, })
+    class B(A):
+        cf: CustomFloat = coercing_field()
+
+    def test_custom_json_encoding(self):
+        ts = TS("2023-04-12T00:00:00Z")
+        a = self.B(ts=ts, cf=CustomFloat(1.))
+        result = a.json()
+        expected = '{"ts": "2023-04-12T00:00:00Z", "cf": 1.5}'
+        self.assertEqual(expected, result)
+
+    def test_custom_json_decoding(self):
+        d = json.loads('{"ts": "2023-04-12T00:00:00Z", "cf": 1.5}')
+        b = self.B(**d)
+        self.assertIsInstance(b.ts, TS)
+        self.assertIsInstance(b.cf, CustomFloat)
+        self.assertEqual(b.cf, CustomFloat(1.5))
+        self.assertEqual(b.ts, TS("2023-04-12T00:00:00Z"))
+
+    def test_mutability(self):
+        @jsoned_data(frozen=True)
+        class C:
             i: int
 
         c = C(i=1)
