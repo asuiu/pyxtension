@@ -1,11 +1,13 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 import json
 from dataclasses import dataclass, FrozenInstanceError
+from typing import Optional
 from unittest import TestCase
 
+import pandas as pd
 from tsx import TS
 
-from pyxtension.models import ExtModel, FrozenSmartDataclass, SmartDataclass
+from pyxtension.models import ExtModel, FrozenSmartDataclass, SmartDataclass, coercing_field
 
 
 class TestExtModel(TestCase):
@@ -42,7 +44,7 @@ class CustomFloat(float):
 class TestSmartDataclass(TestCase):
     @dataclass
     class A(SmartDataclass):
-        ts: TS
+        ts: TS = coercing_field()
 
         class Config:
             json_encoders = {
@@ -51,7 +53,7 @@ class TestSmartDataclass(TestCase):
 
     @dataclass
     class B(A):
-        cf: CustomFloat
+        cf: CustomFloat = coercing_field()
 
         class Config:
             json_encoders = {
@@ -97,11 +99,33 @@ class TestSmartDataclass(TestCase):
         c.i = 2
         self.assertEqual(c.i, 2)
 
+    def test_pd_dataframe_member(self):
+        @dataclass
+        class C(SmartDataclass):
+            df: pd.DataFrame
+            optional_df: Optional[pd.DataFrame] = None
+
+        df = pd.DataFrame([1, 2, 3])
+        c = C(df=df)
+        self.assertIsInstance(c.df, pd.DataFrame)
+        self.assertTrue(c.df.equals(df))
+        self.assertIsNone(c.optional_df)
+
+    def test_explicit_coercion(self):
+        @dataclass
+        class C(SmartDataclass):
+            i: int = coercing_field(default=0)
+
+        c = C(i="1")
+        self.assertEqual(c.i, 1)
+        c = C()
+        self.assertEqual(c.i, 0)
+
 
 class TestFrozenSmartDataclass(TestCase):
     @dataclass(frozen=True)
     class A(FrozenSmartDataclass):
-        ts: TS
+        ts: TS = coercing_field()
 
         class Config:
             json_encoders = {
@@ -110,7 +134,7 @@ class TestFrozenSmartDataclass(TestCase):
 
     @dataclass(frozen=True)
     class B(A):
-        cf: CustomFloat
+        cf: CustomFloat = coercing_field()
 
         class Config:
             json_encoders = {

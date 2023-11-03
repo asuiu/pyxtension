@@ -1,6 +1,6 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 import json
-from dataclasses import dataclass, fields, asdict
+from dataclasses import dataclass, fields, asdict, field, Field, MISSING
 from typing import Any, Callable, cast, Optional, Type
 
 from json_composite_encoder import JSONCompositeEncoder
@@ -83,6 +83,15 @@ def _coerce_type(type_: Type[Any], value: Any) -> Any:
         raise ValueError(f"Cannot coerce {value!r} to {type_.__name__}")
 
 
+def coercing_field(*, default=MISSING, default_factory=MISSING, init=True, repr=True,
+                   hash=None, compare=True, metadata=None) -> Field:
+    if metadata is None:
+        metadata = {"coerce": True}
+    else:
+        metadata["coerce"] = True
+    return field(default=default, default_factory=default_factory, init=init, repr=repr, hash=hash, compare=compare, metadata=metadata)
+
+
 class BaseSmartDataclass:
     """
     Smart Dataclass with custom JSON encoder.
@@ -94,6 +103,8 @@ class BaseSmartDataclass:
 
     def __post_init__(self):
         for field_ in fields(self):
+            if not field_.metadata.get("coerce", False):
+                continue
             value = getattr(self, field_.name)
             coerced_value = _coerce_type(field_.type, value)
             # Bypass the frozen nature of dataclasses to set the coerced value
