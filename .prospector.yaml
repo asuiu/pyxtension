@@ -1,0 +1,73 @@
+output-format: grouped
+strictness: veryhigh
+max-line-length: 160
+#doc-warnings: false
+ignore-paths:
+  - .git
+  - .idea
+  - data/
+  - tests/ # ToDo: it still doesn't work
+
+ignore-patterns:
+  - ^.*config.py$ # ToDo: Doesn't work for unknown reasons: https://prospector.readthedocs.io/en/latest/profiles.html
+  - ^.*old_market_data_source.py$ # ToDo: it still doesn't work
+
+dodgy:
+  run: true
+
+pep257:
+  disable:
+    - D100
+    - D101
+    - D102
+    - D103
+    - D107
+
+pep8:
+  run: true
+  disable: [ E123,E261,N803,N806,N802,N812,E741,E203 ]
+
+mccabe:
+  options: { max-complexity: 15 }
+
+pyflakes:
+  run: false
+
+# Next section is disabled and is not run
+pylint:
+  run: false # Temporary disable pylint is broken up to 2.6.0
+  disable: # Disabled permanently
+    - too-many-public-methods
+    - too-few-public-methods
+    - no-init
+    - too-many-ancestors
+    - too-many-instance-attributes
+    - relative-beyond-top-level
+
+
+  options:
+    # List of decorators that create context managers from functions.
+    # contextmanager-decorators: [contextlib.contextmanager, contextlib2.contextmanager]
+
+    # Regular expression used by pylint to match correct function/method names. In this case
+    # the maximum length was extended to 40 for both.
+    function-rgx: "[a-z_][a-z0-9_]{2,40}$"
+    method-rgx: "[a-zA-Z_][a-zA-Z0-9_]{2,40}$"
+
+    # Good variable names which should always be accepted.
+    good-names: [ _, a, c, e, es, n, f, i, id, ip, i, j, k, logger, ph, s, v, x, y, z, df, lr ]
+
+    # Maximum number of arguments for function / method
+    max-args: 12
+
+    # Maximum number of locals for function / method body
+    max-locals: 30
+
+    # Maximum number of return / yield for function / method body
+    max-returns: 12
+
+    # Maximum number of branch for function / method body
+    max-branches: 30
+
+    # Maximum number of statements in function / method body
+    max-statements: 60

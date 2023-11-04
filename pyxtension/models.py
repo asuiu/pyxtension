@@ -1,6 +1,7 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 import json
-from dataclasses import dataclass, fields, asdict, field, Field, MISSING
+from abc import ABC
+from dataclasses import fields, asdict, field, Field, MISSING
 from typing import Any, Callable, cast, Optional, Type, Dict
 
 from json_composite_encoder import JSONCompositeEncoder
@@ -9,7 +10,6 @@ try:
     from pydantic.v1 import BaseModel, Extra
 except ImportError:
     from pydantic import BaseModel, Extra
-
 
 class ExtModel(BaseModel):
     """
@@ -105,9 +105,10 @@ def field_config(metadata: Optional[dict] = None, *,
     return metadata
 
 
-class _BaseJsonData:
+class JsonData(ABC):
     """
-    Smart Dataclass with custom JSON encoder.
+    Intended to be used with @dataclass decorator.
+    Dataclass with custom JSON encoder.
     Performs automatic type coercion and provides custom encoding.
     """
 
@@ -136,44 +137,3 @@ class _BaseJsonData:
             if hasattr(base, 'Config') and hasattr(base.Config, 'json_encoders'):
                 combined_encoders.update(base.Config.json_encoders)
         return combined_encoders
-
-
-@dataclass
-class JsonData(_BaseJsonData):
-    """
-    Smart Dataclass with custom JSON encoder.
-    Performs automatic type coercion and provides custom encoding.
-    """
-
-
-@dataclass(frozen=True)
-class FrozenJsonData(_BaseJsonData):
-    """
-    Smart Immutable Dataclass with custom JSON encoder.
-    Performs automatic type coercion and provides custom encoding.
-    """
-
-
-def _jsoned_data(cls: Type, init: bool, repr: bool, eq: bool, order: bool,
-                 unsafe_hash: bool, frozen: bool, encoders: Optional[Dict[Type, Any]] = None):
-    cls.__post_init__ = _BaseJsonData.__post_init__
-    cls.json = _BaseJsonData.json
-    cls._get_combined_encoders = classmethod(_BaseJsonData._get_combined_encoders.__func__)
-    if encoders is not None:
-        new_config = type('Config', (_BaseJsonData.Config,), {'json_encoders': encoders})
-        cls.Config = new_config
-    return dataclass(cls, init=init, repr=repr, eq=eq, order=order, unsafe_hash=unsafe_hash, frozen=frozen)
-
-
-def jsoned_data(cls=None, /, *, init=True, repr=True, eq=True, order=False,
-                unsafe_hash=False, frozen=False, encoders=None):
-    def wrap(cls):
-        return _jsoned_data(cls, init, repr, eq, order, unsafe_hash, frozen, encoders)
-
-    # See if we're being called as @dataclass or @dataclass().
-    if cls is None:
-        # We're called with parens.
-        return wrap
-
-    # We're called as @dataclass without parens.
-    return wrap(cls)

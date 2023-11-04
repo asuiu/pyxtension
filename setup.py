@@ -9,7 +9,7 @@ from os.path import join
 __author__ = 'ASU'
 
 # Bump up this version
-VERSION = '1.16.6'
+VERSION = '1.16.7'
 
 from setuptools import setup
 from setuptools.command.install import install
