@@ -1,15 +1,16 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 import json
-from dataclasses import dataclass, FrozenInstanceError
-from typing import Optional, List
+from dataclasses import FrozenInstanceError, dataclass
+from typing import Dict, List, Optional
 from unittest import TestCase
 
 import pandas as pd
 import pydantic
 from pydantic.v1 import BaseModel, validator
+from streamerate import slist
 from tsx import TS
 
-from pyxtension.models import ExtModel, coercing_field, JsonData, ImmutableExtModel
+from pyxtension.models import ExtModel, ImmutableExtModel, JsonData, coercing_field
 
 
 class CustomFloat(float):
@@ -63,6 +64,8 @@ class TestExtModel(TestCase):
         class B(A):
             cf: CustomFloat
             a_list: List[A]
+            a_slist: slist[A]
+            a_dict: Dict[int, A]
 
             @validator('cf')
             def custom_float_validator(cls, v):
@@ -70,14 +73,19 @@ class TestExtModel(TestCase):
                     return CustomFloat(v)
                 return v
 
+            @validator('a_slist')
+            def a_slist_validator(cls, v):
+                if not isinstance(v, slist):
+                    return slist(v)
+                return v
+
             class Config:
-                json_encoders = {
-                    CustomFloat: lambda cf: cf + 0.5, }
+                json_encoders = {CustomFloat: lambda cf: cf + 0.5}
 
         ts = TS("2023-04-12T00:00:00Z")
-        a = B(ts=ts, cf=1., a_list=[A(ts=ts)])
+        a = B(ts=ts, cf=1., a_list=[A(ts=ts)], a_slist=slist([A(ts=ts)]), a_dict={1: A(ts=ts)})
         serialized_json = a.json()
-        expected = '{"ts": "2023-04-12T00:00:00Z", "cf": 1.5, "a_list": [{"ts": "2023-04-12T00:00:00Z"}]}'
+        expected = '{"ts": "20230412", "cf": 1.5, "a_list": [{"ts": "20230412"}], "a_slist": [{"ts": "20230412"}], "a_dict": {"1": {"ts": "20230412"}}}'
         self.assertEqual(serialized_json, expected)
         d = json.loads(serialized_json)
         new_a = B(**d)

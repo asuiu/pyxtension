@@ -15,6 +15,9 @@ class ExtModel(BaseModel):
     """
     Extended Model with custom JSON encoder.
     Extends the standard Pydantic model functionality by allowing arbitrary types and providing custom encoding.
+
+    The main purpose of existing this class is to fix encoding issue in PyDantic and provide a properly working custom JSON encoder for arbitrary types.
+    Ex: if you have a custom type like TS, which derives from float, PyDantic will ignore the custom encoder and use the default one for float.
     """
 
     def json(
