@@ -58,6 +58,12 @@ class ExtModel(BaseModel):
         # Note: using a default arg instead of cls would not call encoder for elements that derive from base types like str or float;
         return self.__config__.json_dumps(data, default=encoder, cls=composite_encoder_builder, **dumps_kwargs)
 
+    def replace(self, **changes: Any) -> "ExtModel":
+        """
+        Return a deep copy of the model replacing the specified fields with the supplied values.
+        """
+        return self.copy(update=changes, deep=True)
+
     class Config:
         arbitrary_types_allowed = True
 
