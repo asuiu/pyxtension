@@ -1,8 +1,8 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 import json
 from abc import ABC
-from dataclasses import fields, asdict, field, Field, MISSING
-from typing import Any, Callable, cast, Optional, Type, Dict
+from dataclasses import MISSING, Field, asdict, field, fields
+from typing import Any, Callable, Dict, Optional, Type, cast
 
 from json_composite_encoder import JSONCompositeEncoder
 
@@ -10,6 +10,7 @@ try:
     from pydantic.v1 import BaseModel, Extra
 except ImportError:
     from pydantic import BaseModel, Extra
+
 
 class ExtModel(BaseModel):
     """
@@ -21,17 +22,17 @@ class ExtModel(BaseModel):
     """
 
     def json(
-            self,
-            *,
-            include=None,
-            exclude=None,
-            by_alias: bool = False,
-            skip_defaults: bool = None,
-            exclude_unset: bool = False,
-            exclude_defaults: bool = False,
-            exclude_none: bool = False,
-            encoder: Optional[Callable[[Any], Any]] = None,
-            **dumps_kwargs: Any,
+        self,
+        *,
+        include=None,
+        exclude=None,
+        by_alias: bool = False,
+        skip_defaults: bool = None,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        encoder: Optional[Callable[[Any], Any]] = None,
+        **dumps_kwargs: Any,
     ) -> str:
         """
         Note: we don't override the dict() method since it doesn't need custom encoder, so only here we can apply custom encoders;
@@ -85,21 +86,26 @@ def _coerce_type(type_: Type[Any], value: Any) -> Any:
         return value
     try:
         return type_(value)
-    except (ValueError, TypeError):
-        raise ValueError(f"Cannot coerce {value!r} to {type_.__name__}")
+    except (ValueError, TypeError) as exc:
+        raise ValueError(f"Cannot coerce {value!r} to {type_.__name__}") from exc
 
 
+# pylint: disable=redefined-builtin
 def coercing_field(*, default=MISSING, default_factory=MISSING, init=True, repr=True, hash=None, compare=True, metadata=None) -> Field:
     metadata = field_config(metadata, coerce=True)
+    # pylint: disable=invalid-field-call
     return field(default=default, default_factory=default_factory, init=init, repr=repr, hash=hash, compare=compare, metadata=metadata)
 
 
-def field_config(metadata: Optional[dict] = None, *,
-                 coerce: bool = False,
-                 encoder: Optional[Callable] = None,
-                 decoder: Optional[Callable] = None,
-                 field_name: Optional[str] = None,
-                 ) -> Optional[Dict[str, dict]]:
+# pylint: disable=unused-argument
+def field_config(
+    metadata: Optional[dict] = None,
+    *,
+    coerce: bool = False,
+    encoder: Optional[Callable] = None,
+    decoder: Optional[Callable] = None,
+    field_name: Optional[str] = None,
+) -> Optional[Dict[str, dict]]:
     if coerce:
         if metadata is None:
             metadata = {}
@@ -137,6 +143,6 @@ class JsonData(ABC):
     def _get_combined_encoders(cls):
         combined_encoders = {}
         for base in reversed(cls.__mro__):
-            if hasattr(base, 'Config') and hasattr(base.Config, 'json_encoders'):
+            if hasattr(base, "Config") and hasattr(base.Config, "json_encoders"):
                 combined_encoders.update(base.Config.json_encoders)
         return combined_encoders

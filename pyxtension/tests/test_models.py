@@ -6,7 +6,7 @@ from unittest import TestCase
 
 import pandas as pd
 import pydantic
-from pydantic.v1 import BaseModel, validator
+from pydantic.v1 import validator
 from streamerate import slist
 from tsx import TS
 
@@ -45,7 +45,9 @@ class MinionWithWallet(MinionWithFamily):
     wallet: CustomFloatWithVal
 
     class Config:
-        json_encoders = {CustomFloat: lambda cf: cf + 0.5, }
+        json_encoders = {
+            CustomFloat: lambda cf: cf + 0.5,
+        }
 
 
 class TestExtModel(TestCase):
@@ -57,9 +59,7 @@ class TestExtModel(TestCase):
             ts: TS
 
             class Config:
-                json_encoders = {
-                    TS: TS.as_iso.fget
-                }
+                json_encoders = {TS: TS.as_iso.fget}
 
         class B(A):
             cf: CustomFloat
@@ -67,13 +67,13 @@ class TestExtModel(TestCase):
             a_slist: slist[A]
             a_dict: Dict[int, A]
 
-            @validator('cf')
+            @validator("cf")
             def custom_float_validator(cls, v):
                 if not isinstance(v, CustomFloat):
                     return CustomFloat(v)
                 return v
 
-            @validator('a_slist')
+            @validator("a_slist")
             def a_slist_validator(cls, v):
                 if not isinstance(v, slist):
                     return slist(v)
@@ -83,7 +83,7 @@ class TestExtModel(TestCase):
                 json_encoders = {CustomFloat: lambda cf: cf + 0.5}
 
         ts = TS("2023-04-12T00:00:00Z")
-        a = B(ts=ts, cf=1., a_list=[A(ts=ts)], a_slist=slist([A(ts=ts)]), a_dict={1: A(ts=ts)})
+        a = B(ts=ts, cf=1.0, a_list=[A(ts=ts)], a_slist=slist([A(ts=ts)]), a_dict={1: A(ts=ts)})
         serialized_json = a.json()
         expected = '{"ts": "20230412", "cf": 1.5, "a_list": [{"ts": "20230412"}], "a_slist": [{"ts": "20230412"}], "a_dict": {"1": {"ts": "20230412"}}}'
         self.assertEqual(serialized_json, expected)
@@ -111,13 +111,16 @@ class TestExtModel(TestCase):
         class WithValidatedCF(ExtModel):
             cf: CustomFloatWithVal
 
-        c = WithValidatedCF(cf=1.)
+        c = WithValidatedCF(cf=1.0)
         self.assertIsInstance(c.cf, CustomFloatWithVal)
 
     def test_model_with_nested(self):
-        m = MinionWithWallet(name="Joe", birth_date=TS("2001-01-01"),
-                             members=[FrozenMinion(name="Sara", birth_date=TS("2002-02-02")), FrozenMinion(name="Garry", birth_date=TS("2003-03-03"))],
-                             wallet=CustomFloat(1.))
+        m = MinionWithWallet(
+            name="Joe",
+            birth_date=TS("2001-01-01"),
+            members=[FrozenMinion(name="Sara", birth_date=TS("2002-02-02")), FrozenMinion(name="Garry", birth_date=TS("2003-03-03"))],
+            wallet=CustomFloat(1.0),
+        )
         serialized = m.json()
         d = json.loads(serialized)
         new_m = MinionWithWallet(**d)
@@ -133,7 +136,7 @@ class TestExtModel(TestCase):
             i: int
 
         with self.assertRaises(TypeError):
-            a = A(i=1)
+            _ = A(i=1)
 
     def test_mutable_with_frozen_dataclass(self):
         @dataclass(frozen=True)
@@ -161,8 +164,8 @@ class TestExtModel(TestCase):
         class Boss(ExtModel):
             minions: List[Minion]
 
-        boss = Boss(minions=[Minion(name='evil minion'), Minion(name='very evil minion')])
-        expected_json = '{"minions": [{"name": "evil minion"}, {"name": "very evil minion"}]}'
+        boss = Boss(minions=[Minion(name="evil minion"), Minion(name="very evil minion")])
+        expected_json = '{"minions": [{"name": "evil minion"}, {"name": "very evil minion"}]}'  # noqa: F841
         j = boss.json()
         # ToDo: next assert doesn't pass as it adds "__pydantic_initialised__": true to Minion. Investigate.
         # self.assertEqual(j, expected_json)
@@ -178,9 +181,7 @@ class TestJsonData(TestCase):
         ts: TS = coercing_field()
 
         class Config:
-            json_encoders = {
-                TS: TS.as_iso.fget
-            }
+            json_encoders = {TS: TS.as_iso.fget}
 
     @dataclass
     class B(A):
@@ -188,11 +189,12 @@ class TestJsonData(TestCase):
 
         class Config:
             json_encoders = {
-                CustomFloat: lambda cf: cf + 0.5, }
+                CustomFloat: lambda cf: cf + 0.5,
+            }
 
     def test_custom_json_encoding(self):
         ts = TS("2023-04-12T00:00:00Z")
-        a = self.B(ts=ts, cf=CustomFloat(1.))
+        a = self.B(ts=ts, cf=CustomFloat(1.0))
         result = a.json()
         expected = '{"ts": "2023-04-12T00:00:00Z", "cf": 1.5}'
         self.assertEqual(expected, result)
@@ -268,7 +270,7 @@ class TestJsonData(TestCase):
         d = D(ds=[c, c], tss=[ts])
         j = d.json()
         d = json.loads(j)
-        new_d = D(**d)
+        new_d = D(**d)  # noqa: F841
         # ToDo: implement handling of complex data types for coercion
         # self.assertIsInstance(new_d.ds, list)
 
@@ -279,9 +281,7 @@ class TestFrozenJsonData(TestCase):
         ts: TS = coercing_field()
 
         class Config:
-            json_encoders = {
-                TS: TS.as_iso.fget
-            }
+            json_encoders = {TS: TS.as_iso.fget}
 
     @dataclass(frozen=True)
     class B(A):
@@ -289,7 +289,8 @@ class TestFrozenJsonData(TestCase):
 
         class Config:
             json_encoders = {
-                CustomFloat: lambda cf: cf + 0.5, }
+                CustomFloat: lambda cf: cf + 0.5,
+            }
 
     def test_mutability(self):
         @dataclass(frozen=True)

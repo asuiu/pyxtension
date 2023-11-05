@@ -1,6 +1,7 @@
 -r requirements.txt
-twine>=4.0.1
-tsx>=0.0.1
+numpy>=1.22.2 # not directly required, pinned by Snyk to avoid a vulnerability
 pandas>=1.0.3
 pre-commit>=2.20.0
-numpy>=1.22.2 # not directly required, pinned by Snyk to avoid a vulnerability
+prospector>=1.10.3
+tsx>=0.0.1
+twine>=4.0.1
