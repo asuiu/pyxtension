@@ -1,6 +1,8 @@
-__author__ = 'andrei.suiu@gmail.com'
+__author__ = "andrei.suiu@gmail.com"
 
-from typing import Type, Any
+from typing import Any, Type
+
+from pyxtension.safe_dict import SafeDict  # noqa: F401
 
 
 class ValidateError(ValueError):
@@ -8,12 +10,13 @@ class ValidateError(ValueError):
         ValueError.__init__(self, *args, **kwargs)
 
 
-def validate(expr, msg="Invalid argument", exc: 'Type[Exception]' = ValidateError):
+def validate(expr, msg="Invalid argument", exc: "Type[Exception]" = ValidateError):
     """
     If the expression val does not evaluate to True, then raise a ValidationError with msg
     """
     if not expr:
         raise exc(msg)
+
 
 class PydanticValidated:
     @classmethod
@@ -23,16 +26,14 @@ class PydanticValidated:
     @classmethod
     def _pydantic_validator(cls, v):
         if not isinstance(v, cls):
-            raise TypeError(f'{repr(v)} is of type {type(v)} but is expected to be of {cls}')
+            raise TypeError(f"{repr(v)} is of type {type(v)} but is expected to be of {cls}")
         return v
 
 
 class frozendict(dict):
-    __slots__ = (
-        "_hash",
-    )
+    __slots__ = ("_hash",)
 
-    def __new__(cls: Type['frozendict'], *args: Any, **kwargs: Any) -> 'frozendict':
+    def __new__(cls: Type["frozendict"], *args: Any, **kwargs: Any) -> "frozendict":
         new = super().__new__(cls, *args, **kwargs)
         new._hash = None
         return new
@@ -53,10 +54,10 @@ class frozendict(dict):
         return _hash
 
     def _immutable(self, *args, **kws):
-        raise TypeError('object is immutable')
+        raise TypeError("object is immutable")
 
-    def copy(self) -> 'frozendict':
-        """ Return the object itself, as it's immutable. """
+    def copy(self) -> "frozendict":
+        """Return the object itself, as it's immutable."""
         return self
 
     __setitem__ = _immutable
