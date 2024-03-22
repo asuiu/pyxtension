@@ -9,13 +9,11 @@ from os.path import join
 __author__ = "ASU"
 
 # Bump up this version
-VERSION = "1.16.9"
+VERSION = "1.16.10"
 
 from setuptools import setup
 from setuptools.command.install import install
 from wheel.bdist_wheel import bdist_wheel
-
-py_modules = ["Json", "streams", "racelib", "fileutils", "__init__"]
 
 basedir = os.path.dirname(__file__)
 dest_package_dir = join(basedir, "pyxtension")
