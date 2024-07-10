@@ -5,3 +5,4 @@ pre-commit>=2.20.0
 prospector>=1.10.3
 tsx>=0.0.1
 twine>=4.0.1
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
