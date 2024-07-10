@@ -4,3 +4,4 @@ tblib>=1.7.0;python_version>="3"
 json-composite-encoder>=1.0.0
 streamerate>=1.0.0
 throttlex>=1.0.0
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
