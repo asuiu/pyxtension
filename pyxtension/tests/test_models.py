@@ -86,7 +86,7 @@ class TestExtModel(TestCase):
         a = B(ts=ts, cf=1.0, a_list=[A(ts=ts)], a_slist=slist([A(ts=ts)]), a_dict={1: A(ts=ts)})
         serialized_json = a.json()
         expected = '{"ts": "20230412", "cf": 1.5, "a_list": [{"ts": "20230412"}], "a_slist": [{"ts": "20230412"}], "a_dict": {"1": {"ts": "20230412"}}}'
-        self.assertEqual(serialized_json, expected)
+        self.assertEqual(expected, serialized_json)
         d = json.loads(serialized_json)
         new_a = B(**d)
         self.assertIsInstance(new_a.ts, TS)

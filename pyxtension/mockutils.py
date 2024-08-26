@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Sequence, Tuple, Type
+from typing import Any, Callable, Dict, Sequence, Tuple, Type, Union
 
 
 class UnknownMockArguments(Exception):
@@ -6,7 +6,9 @@ class UnknownMockArguments(Exception):
 
 
 def generate_mock_map_func(
-    args_to_ret: Sequence[Tuple[Dict[str, Any], Any]] | Dict[Tuple[Any, ...], Any], arg_names: Tuple[str, ...] = (), exc: Type[Exception] = UnknownMockArguments
+    args_to_ret: Union[Sequence[Tuple[Dict[str, Any], Any]], Dict[Tuple[Any, ...], Any]],
+    arg_names: Tuple[str, ...] = (),
+    exc: Type[Exception] = UnknownMockArguments,
 ) -> Callable[..., Any]:
     """
     This function generates a mock function that returns the value from args_to_ret if the arguments match the keys in args_to_ret.

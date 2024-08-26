@@ -6,14 +6,14 @@
 import os
 from os.path import join
 
-__author__ = "ASU"
-
-# Bump up this version
-VERSION = "1.16.10"
-
 from setuptools import setup
 from setuptools.command.install import install
 from wheel.bdist_wheel import bdist_wheel
+
+__author__ = "ASU"
+
+# Bump up this version
+VERSION = "1.16.11"
 
 basedir = os.path.dirname(__file__)
 dest_package_dir = join(basedir, "pyxtension")
@@ -29,7 +29,7 @@ with open("requirements-dev.txt") as fp:
     dev_require = [s for s in dev_require if not s.startswith(("#", "-"))]
 
 extras_require = {"dev": dev_require, "test": dev_require}
-python_requires = ">=3.6, <4"
+python_requires = ">=3.8, <4"
 
 
 class InstallCommand(install, object):
@@ -82,9 +82,6 @@ parameters = dict(
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",

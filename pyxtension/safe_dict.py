@@ -1,5 +1,5 @@
-from threading import Lock
-from typing import Any, Dict, Iterable, MutableMapping, Tuple, TypeVar
+from threading import RLock
+from typing import Any, Dict, Iterable, MutableMapping, Optional, Tuple, TypeVar
 
 __author__ = "andrei.suiu@gmail.com"
 
@@ -21,7 +21,7 @@ class SafeDict(dict, Dict[_K, _V]):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self._lock = Lock()
+        self._lock = RLock()
 
     def __getitem__(self, key) -> _V:
         with self._lock:
@@ -39,15 +39,15 @@ class SafeDict(dict, Dict[_K, _V]):
         with self._lock:
             return super().__len__()
 
-    def keys(self) -> slist[_K, ...]:
+    def keys(self) -> slist[_K]:
         with self._lock:
             return slist(super().keys())
 
-    def values(self) -> slist[_V, ...]:
+    def values(self) -> slist[_V]:
         with self._lock:
             return slist(super().values())
 
-    def items(self) -> slist[Tuple[_K, _V], ...]:
+    def items(self) -> slist[Tuple[_K, _V]]:
         with self._lock:
             return slist(super().items())
 
@@ -60,22 +60,27 @@ class SafeDict(dict, Dict[_K, _V]):
             return self.__class__(super().copy())
 
     @classmethod
-    def fromkeys(cls, __iterable: Iterable[_V], __value: None = ...) -> dict[_V, Any | None]:
+    def fromkeys(cls, __iterable: Iterable[_V], __value: Any = None) -> Dict[_V, Any]:
         return cls(dict.fromkeys(__iterable, __value))
 
-    def __ior__(self, __value: Iterable[tuple[_K, _V]]):
+    def __ior__(self, _value: Iterable[Tuple[_K, _V]]):
         with self._lock:
-            return super().__ior__(__value)
+            try:
+                return super().__ior__(_value)
+            except AttributeError:
+                for k, v in _value:
+                    self[k] = v
+                return self
 
-    def popitem(self) -> tuple[_K, _V]:
+    def popitem(self) -> Tuple[_K, _V]:
         with self._lock:
             return super().popitem()
 
-    def setdefault(self: MutableMapping[_K, _V | None], __key: _K) -> _V | None:
+    def setdefault(self: MutableMapping[_K, Optional[_V]], __key: _K) -> Optional[_V]:
         with self._lock:
             return super().setdefault(__key)
 
-    def update(self, __m: Iterable[tuple[_K, _V]], **kwargs: _V) -> None:
+    def update(self, __m: Iterable[Tuple[_K, _V]], **kwargs: _V) -> None:
         with self._lock:
             super().update(__m, **kwargs)
 
