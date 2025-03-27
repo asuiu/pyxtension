@@ -1,6 +1,6 @@
-tqdm>=4.62.0;python_version>="3"
-pydantic>=1.8.2;python_version>="3"
-tblib>=1.7.0;python_version>="3"
 json-composite-encoder>=1.0.0
-streamerate>=1.0.0
+pydantic>=1.8.2;python_version>="3"
+streamerate>=1.1.4
+tblib>=1.7.0;python_version>="3"
 throttlex>=1.0.0
+tqdm>=4.62.0;python_version>="3"
