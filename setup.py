@@ -13,7 +13,7 @@ from wheel.bdist_wheel import bdist_wheel
 __author__ = "ASU"
 
 # Bump up this version
-VERSION = "1.16.11"
+VERSION = "1.17.0"
 
 basedir = os.path.dirname(__file__)
 dest_package_dir = join(basedir, "pyxtension")

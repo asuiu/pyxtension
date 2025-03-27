@@ -1,6 +1,7 @@
 # Author: ASU --<andrei.suiu@gmail.com>
 import json
 from dataclasses import FrozenInstanceError, dataclass
+from pathlib import PurePosixPath
 from typing import Dict, List, Optional
 from unittest import TestCase
 
@@ -10,6 +11,7 @@ from pydantic.v1 import validator
 from streamerate import slist
 from tsx import TS
 
+from pyxtension import PydanticCoercingValidated, PydanticStrictValidated
 from pyxtension.models import ExtModel, ImmutableExtModel, JsonData, coercing_field
 
 
@@ -50,16 +52,49 @@ class MinionWithWallet(MinionWithFamily):
         }
 
 
+class TestPydanticCoercingValidated(TestCase):
+    def test_coercing(self):
+        class CustomFloat(float, PydanticCoercingValidated):
+            pass
+
+        class A(ExtModel):
+            cf: CustomFloat
+
+        a = A(cf=1.0)
+        self.assertIsInstance(a.cf, CustomFloat)
+        self.assertEqual(a.cf, CustomFloat(1.0))
+        a = A(cf="1.0")
+        self.assertIsInstance(a.cf, CustomFloat)
+        self.assertEqual(a.cf, CustomFloat(1.0))
+
+
+class TestPydanticStrictValidated(TestCase):
+    def test_not_coercing(self):
+        class CustomFloat(float, PydanticStrictValidated):
+            pass
+
+        class A(ExtModel):
+            cf: CustomFloat
+
+        with self.assertRaises(ValueError):
+            a = A(cf=1.0)
+        with self.assertRaises(ValueError):
+            a = A(cf="1.0")
+        a = A(cf=CustomFloat(1.0))
+        self.assertIsInstance(a.cf, CustomFloat)
+        self.assertEqual(a.cf, CustomFloat(1.0))
+
+
 class TestExtModel(TestCase):
     def test_to_from_json(self):
-        class CustomFloat(float):
+        class CustomFloat(float, PydanticCoercingValidated):
             pass
 
         class A(ExtModel):
             ts: TS
 
             class Config:
-                json_encoders = {TS: TS.as_iso.fget}
+                json_encoders = {TS: TS.as_iso_date_basic.fget}
 
         class B(A):
             cf: CustomFloat
@@ -300,3 +335,61 @@ class TestFrozenJsonData(TestCase):
         c = C(i=1)
         with self.assertRaises(FrozenInstanceError):
             c.i = 2
+
+
+class TestImmutableExtModel(TestCase):
+    def test_basic_immutability(self):
+        class TestModel(ImmutableExtModel):
+            name: str
+            value: int
+
+        model = TestModel(name="test", value=42)
+        with self.assertRaises(TypeError):
+            model.name = "new_name"
+
+        with self.assertRaises(TypeError):
+            model.value = 100
+
+    def test_nested_immutability(self):
+        class NestedModel(ImmutableExtModel):
+            data: dict
+
+        model = NestedModel(data={"key": "value"})
+        with self.assertRaises(TypeError):
+            model.data = {"new": "data"}
+
+        # The nested dict should NOT be immutable
+        model.data["key"] = "new_value"
+
+    def test_json_serialization(self):
+        class JsonModel(ImmutableExtModel):
+            name: str
+            value: int
+
+        model = JsonModel(name="test", value=42)
+        json_str = model.json()
+        expected = '{"name": "test", "value": 42}'
+        self.assertEqual(expected, json_str)
+
+        # Test deserialization
+        loaded = JsonModel.parse_raw(json_str)
+        self.assertEqual(loaded, model)
+
+    def test_with_slists(self):
+        """
+        The behavior of coercing the slist -> list is very unexpected, and in the same context it coerces set -> list.
+        Although unexpected, this is the way the pydantic v1 works at the moment, so we just ensure that nothing changes.
+        """
+
+        class ShallowListing(ImmutableExtModel):
+            """
+            :param objects: list of object names, as PurePosixPath
+            :param prefixes: list of prefixes (equivalent to directories on FileSystems) as strings, ending with "/"
+            """
+
+            objects: slist[PurePosixPath]
+            prefixes: slist[str]
+
+        model = ShallowListing(objects=list([PurePosixPath("a")]), prefixes=set(["a/", "b/"]))
+        self.assertIsInstance(model.objects, list, f"objects are of type {type(model.objects)}")
+        self.assertIsInstance(model.prefixes, list)
