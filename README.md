@@ -1,17 +1,16 @@
 # pyxtension
-[![build Status](https://travis-ci.org/asuiu/pyxtension.svg?branch=master)](https://travis-ci.org/asuiu/pyxtension)
-[![Coverage Status](https://coveralls.io/repos/asuiu/pyxtension/badge.svg?branch=master&service=github)](https://coveralls.io/github/asuiu/pyxtension?branch=master)
+[![Build Status](https://github.com/asuiu/pyxtension/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/asuiu/pyxtension/actions/workflows/python-package.yml)
 
 [pyxtension](https://github.com/asuiu/pyxtension) is a pure Python MIT-licensed library that includes Scala-like streams (using [Fluent Interface pattern](https://en.wikipedia.org/wiki/Fluent_interface)), Json with attribute access syntax, and other common-use stuff.
 
 ###### Note:
 
 **Drop support & maintenance for Python 2.x version, due to [Py2 death](https://www.python.org/doc/sunset-python-2/).**
- 
+
  Although Py2 version will remain in the repository, I won't update PyPi package, so the last Py2 version of the `pyxtension` available at [PyPi](https://pypi.org/project/pyxtension/) will remain [`1.12.7`](https://pypi.org/project/pyxtension/1.12.7/)
 
 Starting with [`1.13.0`](https://pypi.org/project/pyxtension/1.13.0/) I've migrated the packaging & distributing method to [Wheel](https://pythonwheels.com/).
-      
+
 ## Installation
 ```
 pip install pyxtension
@@ -153,14 +152,14 @@ Because of CPython [GIL](https://wiki.python.org/moin/GlobalInterpreterLock) it'
 :rtype: `stream`
 
 ###### **mtmap(self, f: Callable[[_K], _V], poolSize: int = cpu_count(), bufferSize: Optional[int] = None)**
-Parallel ordered map using multithreaded pool. 
+Parallel ordered map using multithreaded pool.
 It can replace the `map` and the order of output stream will be the same as of the input.
 
 It spawns at most `poolSize` threads and applies the `f` function.
 
 The elements in the result stream appears in the **predicted** order.
 
-It won't take more than `bufferSize` elements from the input unless it was already required by output, so you can use it with `takeWhile` on infinite streams and not be afraid that it will continue work in background.  
+It won't take more than `bufferSize` elements from the input unless it was already required by output, so you can use it with `takeWhile` on infinite streams and not be afraid that it will continue work in background.
 
 Because of CPython [GIL](https://wiki.python.org/moin/GlobalInterpreterLock) it's most usefull for I/O or CPU intensive consuming native functions, or on Jython or IronPython interpreters.
 
@@ -466,7 +465,7 @@ Assignment as keys will still work::
 ### frozendict
 `frozendict` is a simple immutable dictionary, where you can't change the internal variables of the class, and they are all immutable objects. Reinvoking `__init__` also doesn't alter the object.
 
-The API is the same as `dict`, without methods that can change the immutability. 
+The API is the same as `dict`, without methods that can change the immutability.
 
 `frozendict` is also hashable and can be used as keys for other dictionaries, of course with the condition that all values of the frozendict are also hashable.
 
