@@ -86,6 +86,32 @@ class TestPydanticStrictValidated(TestCase):
 
 
 class TestExtModel(TestCase):
+    def test_regression_on_pydantic(self):
+        class A(ExtModel):
+            ts: int
+
+        class B(A):
+            cf: float
+            a_list: List[A]
+            a_slist: slist[A]
+            a_dict: Dict[int, A]
+
+            @validator("a_slist")
+            def a_slist_validator(cls, v):
+                if not isinstance(v, slist):
+                    return slist(v)
+                return v
+
+        expected = '{"ts": 20230412, "cf": 1.5, "a_list": [{"ts": 20230412}], "a_slist": [{"ts": 20230412}], "a_dict": {"1": {"ts": 20230412}}}'
+        d = json.loads(expected)
+        new_a = B(**d)
+        self.assertIsInstance(new_a.a_list, list)
+        self.assertIsInstance(new_a.a_list[0], A)
+        self.assertIsInstance(new_a.a_slist, slist)
+        self.assertIsInstance(new_a.a_slist[0], A)
+        self.assertIsInstance(new_a.a_dict, dict)
+        self.assertIsInstance(new_a.a_dict[1], A)
+
     def test_to_from_json(self):
         class CustomFloat(float, PydanticCoercingValidated):
             pass
